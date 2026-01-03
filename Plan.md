@@ -19,7 +19,7 @@ Reverse Proxy
 - secure whole application and linux server
 
 Docker
-- based on docker-compose
+- based on docker compose
 - private net for the containers
 
 
@@ -69,4 +69,4 @@ Analyze the situation and make a proposal and a plan with the further tasks
 - ✅ Document deployment process
 - ✅ Create environment variable template
 - ✅ Document backup/restore procedures
-- ✅ Create docker-compose commands cheat sheet
+- ✅ Create docker compose commands cheat sheet

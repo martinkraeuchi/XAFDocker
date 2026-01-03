@@ -19,6 +19,44 @@ The Docker setup consists of four services:
 
 All services run on a private Docker network (`xafdocker-network`).
 
+## Development/Testing Setup (Without SSL)
+
+For local development and testing, you can access the XAF application directly without SSL certificates:
+
+### Quick Start for Development
+
+1. **Configure environment:**
+   ```bash
+   cp .env.template .env
+   # Edit .env and set at minimum:
+   # - SQL_SA_PASSWORD (strong password)
+   # - URL_SIGNING_KEY (any GUID)
+   ```
+
+2. **Start the application:**
+   ```bash
+   docker compose up -d
+   ```
+
+3. **Access the application:**
+   - **XAF Application:** http://localhost:5080
+   - **Health Check:** http://localhost:5080/health
+   - **SQL Server:** localhost:1433
+
+The application is exposed on port **5080** for direct access, bypassing the nginx reverse proxy.
+
+### Port Configuration
+
+| Service | Internal Port | External Port | Purpose |
+|---------|--------------|---------------|---------|
+| xafapp | 80 | 5080 | XAF Blazor Server (direct access) |
+| sqlserver | 1433 | 1433 | SQL Server (development only) |
+| nginx | 80/443 | 8080/8443 | Reverse proxy (requires SSL setup) |
+
+**Note:** In production, remove the SQL Server port exposure (1433) and access the application only through nginx (ports 80/443).
+
+
+
 ## Quick Start
 
 ### 1. Initial Configuration
@@ -62,7 +100,7 @@ This script will:
 ### 4. Start All Services
 
 ```bash
-docker-compose up -d
+docker compose up -d
 ```
 
 ### 5. Verify Deployment
@@ -70,13 +108,13 @@ docker-compose up -d
 Check that all services are running:
 
 ```bash
-docker-compose ps
+docker compose ps
 ```
 
 Check application logs:
 
 ```bash
-docker-compose logs -f xafapp
+docker compose logs -f xafapp
 ```
 
 Access your application at `https://your-domain.com`
@@ -85,33 +123,33 @@ Access your application at `https://your-domain.com`
 
 ### Start Services
 ```bash
-docker-compose up -d
+docker compose up -d
 ```
 
 ### Stop Services
 ```bash
-docker-compose down
+docker compose down
 ```
 
 ### View Logs
 ```bash
 # All services
-docker-compose logs -f
+docker compose logs -f
 
 # Specific service
-docker-compose logs -f xafapp
-docker-compose logs -f sqlserver
-docker-compose logs -f nginx
+docker compose logs -f xafapp
+docker compose logs -f sqlserver
+docker compose logs -f nginx
 ```
 
 ### Restart a Service
 ```bash
-docker-compose restart xafapp
+docker compose restart xafapp
 ```
 
 ### Rebuild and Restart Application
 ```bash
-docker-compose up -d --build xafapp
+docker compose up -d --build xafapp
 ```
 
 ### Access SQL Server
@@ -125,13 +163,13 @@ docker exec -it xafdocker-sqlserver bash
 
 ### Update Database Schema
 ```bash
-docker-compose exec xafapp dotnet XAFDocker.Blazor.Server.dll --updateDatabase --forceUpdate
+docker compose exec xafapp dotnet XAFDocker.Blazor.Server.dll --updateDatabase --forceUpdate
 ```
 
 ### Renew SSL Certificates Manually
 ```bash
-docker-compose run --rm certbot renew
-docker-compose exec nginx nginx -s reload
+docker compose run --rm certbot renew
+docker compose exec nginx nginx -s reload
 ```
 
 ## Database Management
@@ -169,12 +207,12 @@ docker exec xafdocker-sqlserver /opt/mssql-tools/bin/sqlcmd \
 
 Check if SQL Server is healthy:
 ```bash
-docker-compose ps sqlserver
+docker compose ps sqlserver
 ```
 
 Check SQL Server logs:
 ```bash
-docker-compose logs sqlserver
+docker compose logs sqlserver
 ```
 
 Verify connection string in docker-compose.yml matches SQL Server configuration.
@@ -190,7 +228,7 @@ For testing, you can use staging certificates:
 
 Check certbot logs:
 ```bash
-docker-compose logs certbot
+docker compose logs certbot
 ```
 
 ### Blazor SignalR Connection Issues
@@ -203,7 +241,7 @@ These are already configured in `docker/nginx/conf.d/default.conf`.
 
 Check nginx logs:
 ```bash
-docker-compose logs nginx
+docker compose logs nginx
 ```
 
 ### Database Update Fails on Startup
@@ -212,17 +250,17 @@ The application attempts to run `--updateDatabase --silent` on first start. If t
 
 1. Check XAF application logs:
 ```bash
-docker-compose logs xafapp
+docker compose logs xafapp
 ```
 
 2. Manually update the database:
 ```bash
-docker-compose exec xafapp dotnet XAFDocker.Blazor.Server.dll --updateDatabase --forceUpdate
+docker compose exec xafapp dotnet XAFDocker.Blazor.Server.dll --updateDatabase --forceUpdate
 ```
 
 3. Restart the application:
 ```bash
-docker-compose restart xafapp
+docker compose restart xafapp
 ```
 
 ## Security Considerations
@@ -242,10 +280,10 @@ docker-compose restart xafapp
 
 ```bash
 # Pull latest images
-docker-compose pull
+docker compose pull
 
 # Rebuild and restart
-docker-compose up -d --build
+docker compose up -d --build
 ```
 
 ## Volumes and Data Persistence
@@ -293,7 +331,7 @@ All services include health checks:
 
 ```bash
 # View health status
-docker-compose ps
+docker compose ps
 ```
 
 ### Resource Usage

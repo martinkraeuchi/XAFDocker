@@ -24,13 +24,13 @@ else
 fi
 
 # Check if docker-compose is available
-echo "3. Checking docker-compose..."
-if command -v docker-compose > /dev/null 2>&1; then
-    echo "   ✓ docker-compose is available"
+echo "3. Checking docker compose..."
+if command -v docker compose > /dev/null 2>&1; then
+    echo "   ✓ docker compose is available"
 elif docker compose version > /dev/null 2>&1; then
     echo "   ✓ docker compose (plugin) is available"
 else
-    echo "   ✗ docker-compose not found"
+    echo "   ✗ docker compose not found"
     exit 1
 fi
 

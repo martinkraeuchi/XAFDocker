@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Initialize Let's Encrypt SSL certificates for nginx
-# This script should be run once before starting the full docker-compose setup
+# This script should be run once before starting the full docker compose setup
 
 set -e
 
@@ -38,17 +38,17 @@ fi
 
 echo "### Creating dummy certificate for $DOMAIN_NAME..."
 path="/etc/letsencrypt/live/$DOMAIN_NAME"
-docker-compose run --rm --entrypoint "\
+docker compose run --rm --entrypoint "\
     openssl req -x509 -nodes -newkey rsa:$rsa_key_size -days 1\
     -keyout '$path/privkey.pem' \
     -out '$path/fullchain.pem' \
     -subj '/CN=localhost'" certbot
 
 echo "### Starting nginx..."
-docker-compose up --force-recreate -d nginx
+docker compose up --force-recreate -d nginx
 
 echo "### Deleting dummy certificate for $DOMAIN_NAME..."
-docker-compose run --rm --entrypoint "\
+docker compose run --rm --entrypoint "\
     rm -Rf /etc/letsencrypt/live/$DOMAIN_NAME && \
     rm -Rf /etc/letsencrypt/archive/$DOMAIN_NAME && \
     rm -Rf /etc/letsencrypt/renewal/$DOMAIN_NAME.conf" certbot
@@ -64,7 +64,7 @@ esac
 # Enable staging mode if needed
 if [ $staging != "0" ]; then staging_arg="--staging"; fi
 
-docker-compose run --rm --entrypoint "\
+docker compose run --rm --entrypoint "\
     certbot certonly --webroot -w /var/www/certbot \
     $staging_arg \
     $email_arg \
@@ -74,7 +74,7 @@ docker-compose run --rm --entrypoint "\
     --force-renewal" certbot
 
 echo "### Reloading nginx..."
-docker-compose exec nginx nginx -s reload
+docker compose exec nginx nginx -s reload
 
 echo "### SSL certificate initialization complete!"
-echo "### You can now start all services with: docker-compose up -d"
+echo "### You can now start all services with: docker compose up -d"
