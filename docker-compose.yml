@@ -1,0 +1,95 @@
+version: '3.3'
+
+services:
+  # SQL Server Express for Linux
+  sqlserver:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    container_name: xafdocker-sqlserver
+    environment:
+      - ACCEPT_EULA=Y
+      - MSSQL_SA_PASSWORD=${SQL_SA_PASSWORD:-YourStrong!Passw0rd}
+      - MSSQL_PID=Express
+    ports:
+      - "1433:1433"  # Only exposed for development, remove in production
+    volumes:
+      - sqlserver-data:/var/opt/mssql
+      - ./docker/sqlserver/init:/docker-entrypoint-initdb.d:ro
+    networks:
+      - xafdocker-network
+    restart: unless-stopped
+    healthcheck:
+      test: /opt/mssql-tools/bin/sqlcmd -S localhost -U sa -P "$${MSSQL_SA_PASSWORD}" -Q "SELECT 1" -b -o /dev/null
+      interval: 10s
+      timeout: 3s
+      retries: 10
+      start_period: 10s
+
+  # XAF Blazor Server Application
+  xafapp:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: xafdocker-app
+    depends_on:
+      sqlserver:
+        condition: service_healthy
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - ASPNETCORE_URLS=http://+:80
+      - ConnectionStrings__ConnectionString=Server=sqlserver,1433;Database=XAFDocker;User Id=sa;Password=${SQL_SA_PASSWORD:-YourStrong!Passw0rd};TrustServerCertificate=True;MultipleActiveResultSets=True
+      - DevExpress__ExpressApp__Security__UrlSigningKey=${URL_SIGNING_KEY}
+    networks:
+      - xafdocker-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:80/health"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 60s
+
+  # nginx Reverse Proxy with SSL
+  nginx:
+    image: nginx:alpine
+    container_name: xafdocker-nginx
+    depends_on:
+      - xafapp
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./docker/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./docker/nginx/conf.d:/etc/nginx/conf.d:ro
+      - ./docker/certbot/conf:/etc/letsencrypt:ro
+      - ./docker/certbot/www:/var/www/certbot:ro
+    networks:
+      - xafdocker-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:80"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 10s
+
+  # Certbot for Let's Encrypt SSL certificates
+  certbot:
+    image: certbot/certbot:latest
+    container_name: xafdocker-certbot
+    volumes:
+      - ./docker/certbot/conf:/etc/letsencrypt
+      - ./docker/certbot/www:/var/www/certbot
+    entrypoint: "/bin/sh -c 'trap exit TERM; while :; do certbot renew; sleep 12h & wait $${!}; done;'"
+    networks:
+      - xafdocker-network
+
+networks:
+  xafdocker-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16
+
+volumes:
+  sqlserver-data:
+    driver: local

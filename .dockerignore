@@ -1,0 +1,59 @@
+# Build results
+**/bin/
+**/obj/
+**/out/
+
+# Visual Studio
+.vs/
+.vscode/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# Docker
+docker-compose*.yml
+Dockerfile*
+.dockerignore
+
+# Git
+.git/
+.gitignore
+.gitattributes
+
+# Documentation
+*.md
+LICENSE
+
+# Environment files
+.env
+.env.local
+
+# Logs
+**/logs/
+*.log
+
+# Test results
+**/TestResults/
+
+# NuGet packages
+*.nupkg
+**/packages/
+
+# Temporary files
+**/tmp/
+**/temp/
+**/.tmp/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+*.swp
+*~
+.idea/
+
+# Certificate files (will be mounted as volumes)
+**/certs/
+**/ssl/
