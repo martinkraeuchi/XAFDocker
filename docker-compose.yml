@@ -32,7 +32,7 @@ services:
       sqlserver:
         condition: service_healthy
     environment:
-      - ASPNETCORE_ENVIRONMENT=Production
+      - ASPNETCORE_ENVIRONMENT=Development
       - ASPNETCORE_URLS=http://+:80
       - ConnectionStrings__ConnectionString=Server=sqlserver,1433;Database=XAFDocker;User Id=sa;Password=${SQL_SA_PASSWORD:-YourStrong!Passw0rd};TrustServerCertificate=True;MultipleActiveResultSets=True
       - DevExpress__ExpressApp__Security__UrlSigningKey=${URL_SIGNING_KEY}

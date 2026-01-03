@@ -15,6 +15,7 @@ namespace XAFDocker.Module.BusinessObjects
         {
         }
         //public DbSet<ModuleInfo> ModulesInfo { get; set; }
+        public DbSet<Contact> Contacts { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {

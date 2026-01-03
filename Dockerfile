@@ -25,8 +25,17 @@ RUN dotnet publish "XAFDocker.Blazor.Server.csproj" -c Release -o /app/publish /
 FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS final
 WORKDIR /app
 
-# Install curl for health checks
-RUN apt-get update && apt-get install -y curl && rm -rf /var/lib/apt/lists/*
+# Install curl for health checks and SkiaSharp dependencies
+RUN apt-get update && apt-get install -y \
+    curl \
+    libfontconfig1 \
+    libfreetype6 \
+    libx11-6 \
+    libxcb1 \
+    libxrender1 \
+    libice6 \
+    libsm6 \
+    && rm -rf /var/lib/apt/lists/*
 
 # Copy published application
 COPY --from=publish /app/publish .
@@ -37,7 +46,7 @@ RUN chmod +x /app/entrypoint.sh
 
 # Set environment variables
 ENV ASPNETCORE_URLS=http://+:80
-ENV ASPNETCORE_ENVIRONMENT=Production
+ENV ASPNETCORE_ENVIRONMENT=Development
 
 # Expose port
 EXPOSE 80
