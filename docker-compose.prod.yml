@@ -1,6 +1,16 @@
-# Production Configuration Overrides for Dokploy
-# Usage: This file contains production-specific settings
-# Dokploy uses docker-compose.yml by default, but you can reference this for production tweaks
+# Production Configuration Overrides
+#
+# IMPORTANT: This is an OVERRIDE file, not a standalone compose file!
+#
+# For Dokploy Deployment:
+#   - Use docker-compose.yml as your main compose file in Dokploy
+#   - Apply production settings via ENVIRONMENT VARIABLES in Dokploy UI instead
+#   - See DEPLOYMENT_DOKPLOY.md for the correct approach
+#
+# For Manual Deployment (with docker-compose command):
+#   docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+#
+# This file only contains OVERRIDES and assumes docker-compose.yml is loaded first.
 
 version: '3.3'
 

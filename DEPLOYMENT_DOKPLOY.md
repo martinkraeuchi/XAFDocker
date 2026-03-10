@@ -133,15 +133,28 @@ curl -sSL https://dokploy.com/install.sh | sh
    - **Branch**: `main`
    - **Docker Compose File Path**: `docker-compose.yml` (root directory)
 
+**⚠️ IMPORTANT**:
+- Use `docker-compose.yml` NOT `docker-compose.prod.yml`
+- The prod file is an override file and won't work standalone in Dokploy
+- Apply production settings via environment variables instead (see next step)
+
 ### Step 3: Configure Environment Variables
 
 In the Dokploy interface, navigate to the **Environment** or **Variables** tab and add:
 
+**Required Variables:**
 ```
 SQL_SA_PASSWORD=<your-strong-password>
 URL_SIGNING_KEY=<your-new-guid>
 DOMAIN_NAME=<your-domain.com>
 EMAIL_ADDRESS=<your-email@domain.com>
+```
+
+**Optional Production Settings:**
+```
+ASPNETCORE_ENVIRONMENT=Production
+Logging__LogLevel__Default=Warning
+Logging__LogLevel__Microsoft=Warning
 ```
 
 **Note**: Dokploy will automatically create a `.env` file with these variables in the deployment directory.
@@ -609,6 +622,27 @@ services:
 ## Troubleshooting
 
 ### Common Issues and Solutions
+
+#### Issue 0: "service has neither an image nor a build context specified"
+
+**Symptoms**: Deployment fails with error: `service "nginx" has neither an image nor a build context specified: invalid compose project`
+
+**Cause**: Dokploy is trying to use `docker-compose.prod.yml` as a standalone file, but it's an override file that requires the base `docker-compose.yml`.
+
+**Solution**:
+1. In Dokploy, change **Docker Compose File Path** to: `docker-compose.yml`
+2. Apply production settings via **Environment Variables** instead:
+   ```
+   ASPNETCORE_ENVIRONMENT=Production
+   Logging__LogLevel__Default=Warning
+   ```
+3. Redeploy
+
+**Explanation**: The `docker-compose.prod.yml` file is designed to be used WITH the base file using the command:
+```bash
+docker compose -f docker-compose.yml -f docker-compose.prod.yml up
+```
+It doesn't contain complete service definitions, only overrides.
 
 #### Issue 1: SQL Server Container Won't Start
 
