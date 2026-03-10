@@ -435,7 +435,13 @@ This project includes comprehensive deployment documentation for production envi
 |-------|---------|----------|
 | **[PRODUCTION_SETUP.md](./PRODUCTION_SETUP.md)** | Quick start production deployment | DevOps, Quick deployment |
 | **[DEPLOYMENT_DOKPLOY.md](./DEPLOYMENT_DOKPLOY.md)** | Comprehensive Dokploy guide | Complete reference, troubleshooting |
-| **docker-compose.prod.yml** | Production configuration overrides | Advanced customization |
+
+### 📦 Docker Compose Files
+
+| File | Purpose | Use Case |
+|------|---------|----------|
+| **docker-compose.yml** | Development configuration | Local development, exposed ports, debug logging |
+| **docker-compose.prod.yml** | Production configuration | Dokploy deployment, production settings, security hardened |
 
 ### 🎯 Deployment Highlights
 
@@ -466,6 +472,11 @@ If not using Dokploy, follow these steps:
    ```
 
 2. **Use production compose file**:
+   ```bash
+   docker compose -f docker-compose.prod.yml up -d
+   ```
+
+   Or combine both for override approach:
    ```bash
    docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
    ```

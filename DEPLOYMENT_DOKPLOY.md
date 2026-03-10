@@ -131,12 +131,23 @@ curl -sSL https://dokploy.com/install.sh | sh
 3. Configure the source:
    - **Repository URL**: `https://github.com/martinkraeuchi/XAFDocker.git`
    - **Branch**: `main`
-   - **Docker Compose File Path**: `docker-compose.yml` (root directory)
+   - **Docker Compose File Path**: Choose based on your needs:
+     - `docker-compose.yml` - Development configuration
+     - `docker-compose.prod.yml` - **Production configuration (Recommended)**
 
-**⚠️ IMPORTANT**:
-- Use `docker-compose.yml` NOT `docker-compose.prod.yml`
-- The prod file is an override file and won't work standalone in Dokploy
-- Apply production settings via environment variables instead (see next step)
+**📝 File Comparison**:
+
+| Feature | docker-compose.yml | docker-compose.prod.yml |
+|---------|-------------------|------------------------|
+| Purpose | Development | **Production** |
+| ASPNETCORE_ENVIRONMENT | Development | **Production** |
+| SQL Server Port Exposed | Yes (1433) | **No (Security)** |
+| Resource Limits | No | **Yes** |
+| Log Rotation | No | **Yes** |
+| Logging Level | Debug/Info | **Warning** |
+| Container Names | Standard | -prod suffix |
+
+**Recommended for Dokploy**: Use `docker-compose.prod.yml` for production deployments.
 
 ### Step 3: Configure Environment Variables
 
@@ -150,14 +161,15 @@ DOMAIN_NAME=<your-domain.com>
 EMAIL_ADDRESS=<your-email@domain.com>
 ```
 
-**Optional Production Settings:**
-```
-ASPNETCORE_ENVIRONMENT=Production
-Logging__LogLevel__Default=Warning
-Logging__LogLevel__Microsoft=Warning
-```
-
-**Note**: Dokploy will automatically create a `.env` file with these variables in the deployment directory.
+**Note**:
+- Dokploy will automatically create a `.env` file with these variables
+- If using `docker-compose.prod.yml`, production settings are already configured
+- If using `docker-compose.yml`, add these optional production overrides:
+  ```
+  ASPNETCORE_ENVIRONMENT=Production
+  Logging__LogLevel__Default=Warning
+  Logging__LogLevel__Microsoft=Warning
+  ```
 
 ### Step 4: Configure Build Settings
 
@@ -623,26 +635,19 @@ services:
 
 ### Common Issues and Solutions
 
-#### Issue 0: "service has neither an image nor a build context specified"
+#### Issue 0: "service has neither an image nor a build context specified" (RESOLVED)
 
 **Symptoms**: Deployment fails with error: `service "nginx" has neither an image nor a build context specified: invalid compose project`
 
-**Cause**: Dokploy is trying to use `docker-compose.prod.yml` as a standalone file, but it's an override file that requires the base `docker-compose.yml`.
+**Cause**: You're using an outdated version of `docker-compose.prod.yml` from before it was updated to be self-contained.
 
 **Solution**:
-1. In Dokploy, change **Docker Compose File Path** to: `docker-compose.yml`
-2. Apply production settings via **Environment Variables** instead:
-   ```
-   ASPNETCORE_ENVIRONMENT=Production
-   Logging__LogLevel__Default=Warning
-   ```
-3. Redeploy
+1. Pull the latest changes from GitHub: `git pull origin main`
+2. The updated `docker-compose.prod.yml` is now a complete, self-contained file
+3. In Dokploy, set **Docker Compose File Path** to: `docker-compose.prod.yml`
+4. Redeploy
 
-**Explanation**: The `docker-compose.prod.yml` file is designed to be used WITH the base file using the command:
-```bash
-docker compose -f docker-compose.yml -f docker-compose.prod.yml up
-```
-It doesn't contain complete service definitions, only overrides.
+**Status**: ✅ This issue is fixed in the latest version (March 2026)
 
 #### Issue 1: SQL Server Container Won't Start
 
