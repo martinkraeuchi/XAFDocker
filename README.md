@@ -412,7 +412,50 @@ dotnet watch --project XAFDocker.Blazor.Server
 
 ## Deployment
 
-### Production Deployment
+This project includes comprehensive deployment documentation for production environments.
+
+### 🚀 Quick Deploy to Dokploy (Recommended)
+
+**Dokploy** is a production-tested Platform as a Service (PaaS) that simplifies deployment.
+
+**Quick Start**: See [PRODUCTION_SETUP.md](./PRODUCTION_SETUP.md) for 20-minute deployment guide.
+
+**Features:**
+- ✅ One-click deployment from GitHub
+- ✅ Automatic SSL certificates
+- ✅ Built-in monitoring and health checks
+- ✅ Volume backups
+- ✅ Webhook support for continuous deployment
+
+**Estimated Setup Time:** 20-30 minutes
+
+### 📚 Deployment Documentation
+
+| Guide | Purpose | Audience |
+|-------|---------|----------|
+| **[PRODUCTION_SETUP.md](./PRODUCTION_SETUP.md)** | Quick start production deployment | DevOps, Quick deployment |
+| **[DEPLOYMENT_DOKPLOY.md](./DEPLOYMENT_DOKPLOY.md)** | Comprehensive Dokploy guide | Complete reference, troubleshooting |
+| **docker-compose.prod.yml** | Production configuration overrides | Advanced customization |
+
+### 🎯 Deployment Highlights
+
+**Docker Compose Compatibility:**
+- ✅ Version 3.3 (compatible with Dokploy and most platforms)
+- ✅ Environment variables via `.env` file
+- ✅ Healthchecks for all services
+- ✅ Production-tested configuration
+
+**What's Included:**
+- XAF Blazor Server application
+- SQL Server Express 2022
+- Nginx reverse proxy with SSL
+- Let's Encrypt certificate management
+- Automated database migrations
+- Volume persistence for data
+
+### Manual Production Deployment
+
+If not using Dokploy, follow these steps:
 
 1. **Update environment variables** in `.env`:
    ```bash
@@ -422,35 +465,31 @@ dotnet watch --project XAFDocker.Blazor.Server
    EMAIL_ADDRESS=admin@your-domain.com
    ```
 
-2. **Configure Nginx** for your domain:
-   - Edit `docker/nginx/conf.d/default.conf`
-   - Update `server_name` with your domain
-
-3. **Setup SSL certificates**:
+2. **Use production compose file**:
    ```bash
-   ./init-letsencrypt.sh
+   docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
    ```
 
-4. **Update docker-compose.yml**:
-   - Change `ASPNETCORE_ENVIRONMENT` to `Production`
-   - Remove port 1433 exposure for SQL Server
-   - Remove port 5080 if using nginx only
+3. **Configure domain and SSL** (if using custom domain):
+   - Point domain A record to your server
+   - Let's Encrypt will auto-generate certificates
 
-5. **Deploy**:
+4. **Verify deployment**:
    ```bash
-   docker compose build
-   docker compose up -d
+   docker compose ps  # All services should be "healthy"
    ```
 
 ### Security Considerations
 
-- Change default SQL Server password
-- Generate new URL signing key (GUID)
-- Use proper SSL certificates (Let's Encrypt)
-- Don't expose SQL Server port in production
-- Enable firewall rules
-- Use environment-specific configurations
-- Implement proper authentication/authorization
+- ✅ Change default SQL Server password
+- ✅ Generate new URL signing key (GUID)
+- ✅ Use proper SSL certificates (Let's Encrypt)
+- ✅ Don't expose SQL Server port in production
+- ✅ Set `ASPNETCORE_ENVIRONMENT=Production`
+- ✅ Enable firewall rules
+- ✅ Configure regular backups
+
+**See [DEPLOYMENT_DOKPLOY.md](./DEPLOYMENT_DOKPLOY.md) for detailed security hardening steps.**
 
 ## Troubleshooting
 

@@ -1,0 +1,92 @@
+# Production Configuration Overrides for Dokploy
+# Usage: This file contains production-specific settings
+# Dokploy uses docker-compose.yml by default, but you can reference this for production tweaks
+
+version: '3.3'
+
+services:
+  # SQL Server - Production Configuration
+  sqlserver:
+    # Remove port exposure for security (access via internal network only)
+    ports: []
+
+    # Add resource limits
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+          cpus: '1.0'
+        reservations:
+          memory: 1G
+          cpus: '0.5'
+
+    # Production logging
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+        compress: "true"
+
+  # XAF Application - Production Configuration
+  xafapp:
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production  # Enable production mode
+      - ASPNETCORE_URLS=http://+:80
+      - ConnectionStrings__ConnectionString=Server=sqlserver,1433;Database=XAFDocker;User Id=sa;Password=${SQL_SA_PASSWORD};TrustServerCertificate=True;MultipleActiveResultSets=True
+      - DevExpress__ExpressApp__Security__UrlSigningKey=${URL_SIGNING_KEY}
+      # Production-specific settings
+      - Logging__LogLevel__Default=Warning
+      - Logging__LogLevel__Microsoft=Warning
+      - Logging__LogLevel__Microsoft.AspNetCore=Warning
+
+    # For production behind nginx, you can remove direct access port
+    # ports: []  # Uncomment to disable direct access
+
+    # Add resource limits
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+          cpus: '0.5'
+        reservations:
+          memory: 512M
+          cpus: '0.25'
+
+    # Production logging
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+        compress: "true"
+
+  # nginx - Production Configuration
+  nginx:
+    # Add resource limits
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+          cpus: '0.25'
+        reservations:
+          memory: 128M
+          cpus: '0.1'
+
+    # Production logging
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "5m"
+        max-file: "2"
+        compress: "true"
+
+  # certbot - Production Configuration
+  certbot:
+    # Production logging
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "5m"
+        max-file: "2"
+        compress: "true"
