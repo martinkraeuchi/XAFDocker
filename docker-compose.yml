@@ -1,3 +1,5 @@
+version: '3.3'
+
 services:
   # SQL Server Express for Linux
   sqlserver:
@@ -5,7 +7,7 @@ services:
     container_name: xafdocker-sqlserver
     environment:
       - ACCEPT_EULA=Y
-      - MSSQL_SA_PASSWORD=${SQL_SA_PASSWORD:-YourStrong!Passw0rd}
+      - MSSQL_SA_PASSWORD=${SQL_SA_PASSWORD}
       - MSSQL_PID=Express
     ports:
       - "1433:1433"  # Only exposed for development, remove in production
@@ -16,11 +18,10 @@ services:
       - xafdocker-network
     restart: unless-stopped
     healthcheck:
-      test: /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P "$${MSSQL_SA_PASSWORD}" -Q "SELECT 1" -C -b -o /dev/null
+      test: ["CMD-SHELL", "/opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P \"$${MSSQL_SA_PASSWORD}\" -Q \"SELECT 1\" -C -b -o /dev/null"]
       interval: 10s
       timeout: 3s
       retries: 10
-      start_period: 10s
 
   # XAF Blazor Server Application
   xafapp:
@@ -29,12 +30,11 @@ services:
       dockerfile: Dockerfile
     container_name: xafdocker-app
     depends_on:
-      sqlserver:
-        condition: service_healthy
+      - sqlserver
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
       - ASPNETCORE_URLS=http://+:80
-      - ConnectionStrings__ConnectionString=Server=sqlserver,1433;Database=XAFDocker;User Id=sa;Password=${SQL_SA_PASSWORD:-YourStrong!Passw0rd};TrustServerCertificate=True;MultipleActiveResultSets=True
+      - ConnectionStrings__ConnectionString=Server=sqlserver,1433;Database=XAFDocker;User Id=sa;Password=${SQL_SA_PASSWORD};TrustServerCertificate=True;MultipleActiveResultSets=True
       - DevExpress__ExpressApp__Security__UrlSigningKey=${URL_SIGNING_KEY}
     ports:
       - "5080:80"  # Direct access to XAF app for testing/development
@@ -46,7 +46,6 @@ services:
       interval: 30s
       timeout: 3s
       retries: 3
-      start_period: 60s
 
   # nginx Reverse Proxy with SSL
   nginx:
@@ -70,7 +69,6 @@ services:
       interval: 30s
       timeout: 3s
       retries: 3
-      start_period: 10s
 
   # Certbot for Let's Encrypt SSL certificates
   certbot:
