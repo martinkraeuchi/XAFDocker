@@ -71,7 +71,9 @@ services:
       - Logging__LogLevel__Microsoft=Warning
       - Logging__LogLevel__Microsoft.AspNetCore=Warning
     ports:
-      - "5080:80"  # Direct app access (optional: remove if using only nginx/Dokploy proxy)
+      - "5080:80"  # Maps host port 5080 to container port 80
+                   # IMPORTANT: Traefik/Dokploy reverse proxy connects to container port 80 (not 5080)
+                   # Configure your domain with Container Port = 80 in Dokploy
     networks:
       - xafdocker-network
     restart: unless-stopped
