@@ -46,8 +46,6 @@ Your current `docker-compose.yml` is **production-ready and Dokploy-optimized**.
 
 - **sqlserver**: SQL Server Express 2022
 - **xafapp**: Your XAF Blazor Server application
-- **nginx**: Reverse proxy for SSL/HTTPS
-- **certbot**: Let's Encrypt SSL certificate management
 
 **✅ Dokploy Compatibility Features:**
 - Uses Docker Compose version 3.3 (compatible with Dokploy's infrastructure)
@@ -64,14 +62,11 @@ Your `.env` file contains sensitive configuration. You'll need these values for 
 # Required environment variables
 SQL_SA_PASSWORD=YourStrong!Passw0rd          # Change this!
 URL_SIGNING_KEY=FAB39807-4423-424D-BC2F-572B65AE19F3  # Change this!
-DOMAIN_NAME=yourdomain.com                    # Your actual domain
-EMAIL_ADDRESS=admin@yourdomain.com            # Your email for Let's Encrypt
 ```
 
 **IMPORTANT SECURITY NOTES:**
 - ⚠️ Change `SQL_SA_PASSWORD` to a strong, unique password
 - ⚠️ Generate a new `URL_SIGNING_KEY` GUID (use: `uuidgen` on Linux/Mac or `[guid]::NewGuid()` in PowerShell)
-- ⚠️ Use your actual domain name and email address
 
 ### Step 3: Optimize for Production (Optional but Recommended)
 
@@ -82,9 +77,8 @@ Consider these changes before deploying:
    - ASPNETCORE_ENVIRONMENT=Production
    ```
 
-2. **Remove unnecessary port exposures** (if using nginx):
-   - Comment out the SQL Server port 1433 exposure for security
-   - Keep only nginx ports (8080, 8443) exposed
+2. **Remove unnecessary port exposures**:
+   - Comment out the SQL Server port 1433 exposure for security in production
 
 3. **Configure persistent volumes** - Already configured:
    - `sqlserver-data` volume for database persistence
@@ -157,8 +151,6 @@ In the Dokploy interface, navigate to the **Environment** or **Variables** tab a
 ```
 SQL_SA_PASSWORD=<your-strong-password>
 URL_SIGNING_KEY=<your-new-guid>
-DOMAIN_NAME=<your-domain.com>
-EMAIL_ADDRESS=<your-email@domain.com>
 ```
 
 **Note**:
@@ -187,25 +179,21 @@ Navigate to the **Volumes** tab:
    - Dokploy will automatically manage the `sqlserver-data` volume
    - Enable automatic backups for this volume if available
 
-2. **Bind Mounts** (if needed):
-   - Nginx config: `./docker/nginx/nginx.conf` → Verify this exists
-   - Certbot configs: `./docker/certbot/conf` and `./docker/certbot/www`
-
 ### Step 6: Configure Domain and SSL
 
-If using a custom domain:
+Dokploy provides built-in SSL management for custom domains:
 
 1. **DNS Configuration**:
    - Add an A record pointing your domain to your Dokploy server IP
    - Example: `xafapp.yourdomain.com` → `123.45.67.89`
 
 2. **Dokploy Domain Settings**:
-   - Navigate to the **Domains** tab
+   - Navigate to the **Domains** tab in your application
    - Add your domain: `xafapp.yourdomain.com`
-   - Choose SSL option (Dokploy can manage Let's Encrypt automatically)
+   - Enable SSL - Dokploy will automatically obtain and manage Let's Encrypt certificates
+   - Dokploy handles SSL termination via its reverse proxy
 
-3. **Update `.env` variables**:
-   - Set `DOMAIN_NAME=xafapp.yourdomain.com`
+**Note**: The application itself runs on HTTP internally (port 80). Dokploy's reverse proxy handles HTTPS termination, so no nginx or certbot configuration is needed in your docker-compose files.
 
 ### Step 7: Deploy
 
@@ -216,8 +204,8 @@ If using a custom domain:
 **Expected Build Process:**
 1. Git clone from repository
 2. Build Docker image for `xafapp` service
-3. Pull pre-built images (SQL Server, nginx, certbot)
-4. Start containers in order: sqlserver → xafapp → nginx → certbot
+3. Pull pre-built image for SQL Server
+4. Start containers in order: sqlserver → xafapp
 5. Database schema update (automatic on first run)
 
 ---
@@ -232,22 +220,8 @@ In the Dokploy dashboard:
 2. Check **Logs** for each service:
    - **sqlserver**: Should show "SQL Server is now ready for client connections"
    - **xafapp**: Should show "Application started" and "Now listening on: http://[::]:80"
-   - **nginx**: Should start without errors (after SSL certs are obtained)
 
-### Step 2: SSL Certificate Setup
-
-If using your own domain with nginx:
-
-1. **First-time certificate generation**:
-   - Certbot will automatically request Let's Encrypt certificates
-   - Monitor `certbot` logs for the certificate request process
-   - Nginx may restart once certificates are available
-
-2. **If using Dokploy's built-in SSL**:
-   - Dokploy handles SSL automatically when you configure a domain
-   - No additional certbot configuration needed
-
-### Step 3: Initial Login
+### Step 2: Initial Login
 
 1. Navigate to your application URL:
    - With custom domain: `https://xafapp.yourdomain.com`
@@ -260,7 +234,7 @@ If using your own domain with nginx:
 
 3. **Change default credentials immediately after first login**
 
-### Step 4: Database Verification
+### Step 3: Database Verification
 
 1. Verify database persistence:
    ```bash
@@ -282,14 +256,13 @@ Dokploy provides built-in monitoring for your services. The following healthchec
 
 - **sqlserver**: SQL Server connection test (every 10s)
 - **xafapp**: HTTP health endpoint check (every 30s)
-- **nginx**: HTTP availability check (every 30s)
 
 ### Viewing Logs
 
 In the Dokploy dashboard:
 
 1. Navigate to your application
-2. Select the service (sqlserver, xafapp, nginx)
+2. Select the service (sqlserver or xafapp)
 3. View real-time logs or download log history
 
 ### Backups
@@ -524,17 +497,13 @@ ports:
 # Production (recommended)
 ports:
   # - "1433:1433"  # REMOVE - SQL Server should NOT be exposed
-  - "5080:80"      # Keep for direct app access, OR
-  # Use only nginx ports if using reverse proxy
-  - "8080:80"      # nginx HTTP
-  - "8443:443"     # nginx HTTPS
+  - "5080:80"      # XAF App - Dokploy will handle SSL termination via reverse proxy
 ```
 
 **Recommendations:**
 1. **Never expose SQL Server port (1433) in production**
-2. **Use nginx as the only entry point** with SSL
-3. **Remove direct app port (5080)** if using nginx
-4. **Let Dokploy manage SSL** via its built-in proxy
+2. **Keep app port (5080) for Dokploy's reverse proxy**
+3. **Let Dokploy manage SSL/TLS termination** via its built-in reverse proxy
 
 ### 8. Logging Configuration
 
@@ -637,13 +606,13 @@ services:
 
 #### Issue 0: "service has neither an image nor a build context specified" (RESOLVED)
 
-**Symptoms**: Deployment fails with error: `service "nginx" has neither an image nor a build context specified: invalid compose project`
+**Symptoms**: Deployment fails with errors related to missing service definitions.
 
-**Cause**: You're using an outdated version of `docker-compose.prod.yml` from before it was updated to be self-contained.
+**Cause**: You're using an outdated version of docker-compose files.
 
 **Solution**:
-1. Pull the latest changes from GitHub: `git pull origin main`
-2. The updated `docker-compose.prod.yml` is now a complete, self-contained file
+1. Pull the latest changes from GitHub: `git pull origin main` or `git pull origin without-nginx`
+2. The updated compose files are complete and self-contained
 3. In Dokploy, set **Docker Compose File Path** to: `docker-compose.prod.yml`
 4. Redeploy
 
@@ -687,36 +656,9 @@ docker compose logs sqlserver
    docker exec xafdocker-app ping sqlserver
    ```
 
-#### Issue 3: Nginx Won't Start - SSL Certificate Error
+#### Issue 3: Application Builds but Returns 502/503 Errors
 
-**Symptoms**: nginx logs show "cannot load certificate" errors
-
-**Solutions**:
-1. **For initial deployment without domain**:
-   ```bash
-   # Temporarily stop nginx to access app directly
-   docker compose stop nginx
-
-   # Access app at: http://your-server-ip:5080
-   ```
-
-2. **For production with domain**:
-   - Ensure domain DNS is properly configured
-   - Wait for certbot to generate certificates (may take a few minutes)
-   - Check certbot logs: `docker compose logs certbot`
-
-3. **Use self-signed certificates for testing**:
-   ```bash
-   # Generate self-signed cert
-   mkdir -p docker/certbot/conf/live/yourdomain.com
-   openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
-     -keyout docker/certbot/conf/live/yourdomain.com/privkey.pem \
-     -out docker/certbot/conf/live/yourdomain.com/fullchain.pem
-   ```
-
-#### Issue 4: Application Builds but Returns 502/503 Errors
-
-**Symptoms**: nginx or Dokploy proxy returns gateway errors
+**Symptoms**: Dokploy proxy returns gateway errors
 
 **Solutions**:
 1. **Check XAF app is actually running**:

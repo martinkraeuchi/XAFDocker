@@ -9,7 +9,7 @@ This guide provides a streamlined path to production deployment on Dokploy with 
 - [ ] Have a Dokploy account (self-hosted or managed)
 - [ ] GitHub repository is up to date
 - [ ] Generated strong passwords (see below)
-- [ ] Domain name configured (optional but recommended)
+- [ ] Domain name configured (optional - Dokploy handles SSL)
 
 ### Generate Secure Credentials
 
@@ -51,8 +51,6 @@ Navigate to **Environment** tab and add:
 ```
 SQL_SA_PASSWORD=<your-generated-password>
 URL_SIGNING_KEY=<your-generated-guid>
-DOMAIN_NAME=<your-domain.com>
-EMAIL_ADDRESS=<your-email@domain.com>
 ```
 
 **Critical:** Use the passwords you generated above, not the examples!
@@ -68,7 +66,7 @@ If using a custom domain:
 2. **Dokploy Domain Settings**:
    - Navigate to **Domains** tab
    - Add: `your-domain.com`
-   - Enable SSL (Let's Encrypt)
+   - Enable SSL - Dokploy automatically obtains and manages Let's Encrypt certificates
 
 ### Step 5: Deploy (1 minute)
 
@@ -173,7 +171,7 @@ docker exec xafdocker-sqlserver /opt/mssql-tools18/bin/sqlcmd \
 - [ ] Unique URL signing key (new GUID)
 - [ ] SQL Server port NOT exposed (remove 1433 from ports)
 - [ ] ASPNETCORE_ENVIRONMENT=Production
-- [ ] SSL/HTTPS enabled (via Dokploy or nginx)
+- [ ] SSL/HTTPS enabled (via Dokploy reverse proxy)
 - [ ] Default admin password changed
 - [ ] Database backups configured
 - [ ] Firewall rules configured (if self-hosted)
@@ -190,14 +188,11 @@ ports:
 **Production (recommended):**
 ```yaml
 ports:
-  # Remove SQL Server port entirely
-  - "5080:80"    # Keep if needed for health checks
-  # OR use only nginx
-  - "8080:80"    # nginx HTTP
-  - "8443:443"   # nginx HTTPS
+  # Remove SQL Server port entirely for security
+  - "5080:80"    # Application port for Dokploy reverse proxy
 ```
 
-**Best Practice:** Let Dokploy proxy handle all external traffic, don't expose ports directly.
+**Best Practice:** Let Dokploy's reverse proxy handle all external traffic and SSL termination. Only expose the application port (5080) internally for the proxy.
 
 ---
 
@@ -310,13 +305,13 @@ docker compose logs xafapp --tail 50
 
 ### Issue: SSL Certificate Not Generated
 
-**Cause:** Domain not pointing to server or certbot configuration issue
+**Cause:** Domain not pointing to server or Dokploy SSL configuration issue
 
 **Solution:**
 1. Verify DNS: `nslookup your-domain.com`
-2. Check certbot logs: `docker compose logs certbot`
-3. Ensure ports 80/443 are accessible
-4. Alternatively, use Dokploy's built-in SSL (recommended)
+2. Check Dokploy domain settings - ensure SSL is enabled
+3. Verify domain is properly added in Dokploy Domains tab
+4. Dokploy automatically handles Let's Encrypt certificates - no manual configuration needed
 
 ### Issue: Database Changes Not Persisting
 

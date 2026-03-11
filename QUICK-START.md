@@ -96,7 +96,7 @@ XAFDocker/
 │
 └── docker/                        # Docker configuration
     ├── app/entrypoint.sh          # Startup script
-    └── nginx/                     # Reverse proxy
+    └── sqlserver/                 # SQL Server init scripts
 ```
 
 ## Adding a New Business Object

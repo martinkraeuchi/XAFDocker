@@ -25,8 +25,6 @@ This project demonstrates a production-ready containerized XAF application with:
 - **Blazor Server** - Interactive web UI
 - **Entity Framework Core** - ORM with SQL Server
 - **Docker** - Full containerization with Docker Compose
-- **Nginx** - Reverse proxy with SSL support
-- **Let's Encrypt** - Automated SSL certificate management
 
 ## Architecture
 
@@ -53,9 +51,7 @@ XAFDocker/
 │
 └── docker/                        # Docker configuration
     ├── app/                       # Application container scripts
-    ├── nginx/                     # Nginx configuration
-    ├── sqlserver/                 # SQL Server initialization
-    └── certbot/                   # SSL certificate management
+    └── sqlserver/                 # SQL Server initialization
 ```
 
 ### Technology Stack
@@ -67,8 +63,6 @@ XAFDocker/
 | UI | Blazor Server | ASP.NET Core 8.0 |
 | Database | SQL Server Express | 2022 |
 | ORM | Entity Framework Core | 8.0 |
-| Web Server | Nginx | Alpine |
-| SSL | Let's Encrypt (Certbot) | Latest |
 | Container | Docker | Latest |
 | Orchestration | Docker Compose | Latest |
 
@@ -152,10 +146,6 @@ SQL_SA_PASSWORD=YourStrong!Passw0rd
 
 # XAF Security
 URL_SIGNING_KEY=FAB39807-4423-424D-BC2F-572B65AE19F3
-
-# Domain (for SSL)
-DOMAIN_NAME=yourdomain.com
-EMAIL_ADDRESS=admin@yourdomain.com
 ```
 
 ### Connection Strings
@@ -298,14 +288,8 @@ public class Contact : BaseObject
 
 ```
 ┌─────────────────┐
-│     nginx       │ Reverse Proxy + SSL
-│   Port: 8080    │
-│   Port: 8443    │
-└────────┬────────┘
-         │
-┌────────▼────────┐
 │   xafapp        │ XAF Blazor Application
-│   Port: 5080    │ (Direct access for dev)
+│   Port: 5080    │ (Exposed on host)
 └────────┬────────┘
          │
 ┌────────▼────────┐
@@ -318,9 +302,9 @@ public class Contact : BaseObject
 
 #### xafapp (XAF Application)
 - **Image**: Custom built from `Dockerfile`
-- **Port**: 5080 (direct access)
-- **Environment**: Development
-- **Dependencies**: SQL Server (healthy)
+- **Port**: 5080 (exposed on host)
+- **Environment**: Development (configurable)
+- **Dependencies**: SQL Server
 - **Health Check**: HTTP GET `/health`
 
 #### sqlserver (SQL Server)
@@ -328,17 +312,6 @@ public class Contact : BaseObject
 - **Port**: 1433 (exposed for development)
 - **Volume**: `sqlserver-data` (persistent storage)
 - **Health Check**: `sqlcmd` query
-
-#### nginx (Reverse Proxy)
-- **Image**: `nginx:alpine`
-- **Ports**: 8080 (HTTP), 8443 (HTTPS)
-- **Volumes**: Configuration, SSL certificates
-- **Status**: Currently requires SSL setup
-
-#### certbot (SSL Certificates)
-- **Image**: `certbot/certbot:latest`
-- **Purpose**: Let's Encrypt certificate renewal
-- **Schedule**: Every 12 hours
 
 ### Docker Commands
 
@@ -454,10 +427,9 @@ This project includes comprehensive deployment documentation for production envi
 **What's Included:**
 - XAF Blazor Server application
 - SQL Server Express 2022
-- Nginx reverse proxy with SSL
-- Let's Encrypt certificate management
 - Automated database migrations
 - Volume persistence for data
+- Production-ready configuration
 
 ### Manual Production Deployment
 
@@ -467,8 +439,6 @@ If not using Dokploy, follow these steps:
    ```bash
    SQL_SA_PASSWORD=<strong-unique-password>
    URL_SIGNING_KEY=<new-guid>
-   DOMAIN_NAME=your-domain.com
-   EMAIL_ADDRESS=admin@your-domain.com
    ```
 
 2. **Use production compose file**:
@@ -481,11 +451,7 @@ If not using Dokploy, follow these steps:
    docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
    ```
 
-3. **Configure domain and SSL** (if using custom domain):
-   - Point domain A record to your server
-   - Let's Encrypt will auto-generate certificates
-
-4. **Verify deployment**:
+3. **Verify deployment**:
    ```bash
    docker compose ps  # All services should be "healthy"
    ```
@@ -494,11 +460,11 @@ If not using Dokploy, follow these steps:
 
 - ✅ Change default SQL Server password
 - ✅ Generate new URL signing key (GUID)
-- ✅ Use proper SSL certificates (Let's Encrypt)
 - ✅ Don't expose SQL Server port in production
 - ✅ Set `ASPNETCORE_ENVIRONMENT=Production`
 - ✅ Enable firewall rules
 - ✅ Configure regular backups
+- ✅ Use platform SSL/TLS termination (e.g., Dokploy reverse proxy)
 
 **See [DEPLOYMENT_DOKPLOY.md](./DEPLOYMENT_DOKPLOY.md) for detailed security hardening steps.**
 
@@ -543,10 +509,9 @@ RUN apt-get update && apt-get install -y \
     libxrender1 libice6 libsm6
 ```
 
-#### Nginx keeps restarting
-Nginx requires SSL certificates. For development:
-- Access app directly at http://localhost:5080
-- For production: Run `./init-letsencrypt.sh`
+#### Application Access
+- Development: http://localhost:5080
+- Production: Use your platform's reverse proxy (e.g., Dokploy manages SSL/TLS termination)
 
 ### Logs
 

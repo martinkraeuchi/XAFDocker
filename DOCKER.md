@@ -1,27 +1,26 @@
 # Docker Deployment Guide
 
-This guide covers deploying the XAF Blazor Server application using Docker with SQL Server Express and nginx reverse proxy with SSL.
+This guide covers deploying the XAF Blazor Server application using Docker with SQL Server Express.
 
 ## Prerequisites
 
 - Docker Engine 20.10+ and Docker Compose 2.0+
-- A domain name pointing to your server (for SSL certificates)
-- Port 80 and 443 available on your server
+- Domain name (optional - for production with platform SSL like Dokploy)
 
 ## Architecture
 
-The Docker setup consists of four services:
+The Docker setup consists of two services:
 
 1. **sqlserver** - Microsoft SQL Server Express 2022 for Linux
 2. **xafapp** - XAF Blazor Server application (.NET 8)
-3. **nginx** - Reverse proxy with SSL termination
-4. **certbot** - Automatic SSL certificate management with Let's Encrypt
 
 All services run on a private Docker network (`xafdocker-network`).
 
-## Development/Testing Setup (Without SSL)
+**Note**: SSL/HTTPS termination is handled by your deployment platform (e.g., Dokploy's reverse proxy) rather than nginx within the Docker Compose setup.
 
-For local development and testing, you can access the XAF application directly without SSL certificates:
+## Development/Testing Setup
+
+For local development and testing, you can access the XAF application directly:
 
 ### Quick Start for Development
 
@@ -43,17 +42,16 @@ For local development and testing, you can access the XAF application directly w
    - **Health Check:** http://localhost:5080/health
    - **SQL Server:** localhost:1433
 
-The application is exposed on port **5080** for direct access, bypassing the nginx reverse proxy.
+The application is exposed on port **5080** for direct access.
 
 ### Port Configuration
 
 | Service | Internal Port | External Port | Purpose |
 |---------|--------------|---------------|---------|
-| xafapp | 80 | 5080 | XAF Blazor Server (direct access) |
+| xafapp | 80 | 5080 | XAF Blazor Server |
 | sqlserver | 1433 | 1433 | SQL Server (development only) |
-| nginx | 80/443 | 8080/8443 | Reverse proxy (requires SSL setup) |
 
-**Note:** In production, remove the SQL Server port exposure (1433) and access the application only through nginx (ports 80/443).
+**Note:** In production, remove the SQL Server port exposure (1433) for security. Your platform (e.g., Dokploy) will handle SSL/HTTPS termination via its reverse proxy.
 
 
 
@@ -72,38 +70,14 @@ nano .env  # or use your preferred editor
 
 - `SQL_SA_PASSWORD` - Strong password for SQL Server (min 8 chars, uppercase, lowercase, numbers, symbols)
 - `URL_SIGNING_KEY` - Generate a new GUID for production (use `uuidgen` or `[guid]::NewGuid()`)
-- `DOMAIN_NAME` - Your domain name (e.g., example.com)
-- `EMAIL_ADDRESS` - Your email for Let's Encrypt notifications
 
-### 2. Update nginx Configuration
-
-Edit `docker/nginx/conf.d/default.conf` and replace `yourdomain.com` with your actual domain name:
-
-```bash
-sed -i 's/yourdomain.com/your-actual-domain.com/g' docker/nginx/conf.d/default.conf
-```
-
-### 3. Initialize SSL Certificates
-
-Run the Let's Encrypt initialization script:
-
-```bash
-./init-letsencrypt.sh
-```
-
-This script will:
-- Create temporary self-signed certificates
-- Start nginx
-- Request real certificates from Let's Encrypt
-- Reload nginx with the real certificates
-
-### 4. Start All Services
+### 2. Start All Services
 
 ```bash
 docker compose up -d
 ```
 
-### 5. Verify Deployment
+### 3. Verify Deployment
 
 Check that all services are running:
 
@@ -117,7 +91,9 @@ Check application logs:
 docker compose logs -f xafapp
 ```
 
-Access your application at `https://your-domain.com`
+Access your application:
+- Development: `http://localhost:5080`
+- Production: Via your platform's domain (e.g., Dokploy manages HTTPS)
 
 ## Common Commands
 
