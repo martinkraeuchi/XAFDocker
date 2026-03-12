@@ -99,6 +99,10 @@ Business objects should be added to `XAFDocker.Module/BusinessObjects/` and regi
 
 XAF automatically generates UI based on business object structure using attributes and the Application Model.
 
+**Current Business Objects:**
+- **[Contact](XAFDocker.Module/BusinessObjects/Contact.cs)** - Contact management with validation rules
+- **[FieldInstruction](XAFDocker.Module/BusinessObjects/FieldInstruction.cs)** - Stores contextual help instructions for DetailView fields. Administrators can manage instructions at runtime without code deployment.
+
 ### Controllers
 
 XAF Controllers extend functionality and can be added to:
@@ -106,6 +110,9 @@ XAF Controllers extend functionality and can be added to:
 - `XAFDocker.Blazor.Server/Controllers/` - Blazor-specific controllers
 
 Controllers inherit from `ViewController` or `ObjectViewController<T>` and use Actions to add UI interactions.
+
+**Implemented Controllers:**
+- **[FieldInstructionViewController](XAFDocker.Module/Controllers/FieldInstructionViewController.cs)** - Displays contextual help instructions when users focus on editor controls in DetailViews. Instructions are stored in the database via the FieldInstruction business object.
 
 ### Application Model
 
@@ -138,6 +145,29 @@ The project uses **DevExpress 25.2.*** packages. When updating DevExpress versio
 3. **Database Version Mismatch** - XAF tracks schema versions. The `DatabaseVersionMismatch` event in BlazorApplication.cs handles schema updates.
 
 4. **Design-Time vs Runtime** - The `IDesignTimeApplicationFactory` in Program.cs enables XAF's design-time tools and Model Editor.
+
+## Features
+
+### Field Instruction System
+
+A contextual help system that displays instructions when users focus on editor controls in DetailViews.
+
+**Architecture:**
+- **[FieldInstruction](XAFDocker.Module/BusinessObjects/FieldInstruction.cs)** - Business object storing instructions per field
+- **[FieldInstructionService](XAFDocker.Module/Services/FieldInstructionService.cs)** - In-memory caching service for O(1) instruction lookups
+- **[FieldInstructionViewController](XAFDocker.Module/Controllers/FieldInstructionViewController.cs)** - Controller that intercepts focus events and displays instructions
+
+**How it works:**
+1. Instructions are stored in database with BusinessObjectType, PropertyName, InstructionText, and IsEnabled fields
+2. When a DetailView opens, the controller loads all enabled instructions into cache
+3. Focus events (mouse click or keyboard tab) on editor controls trigger instruction display
+4. Instructions appear as toast notifications at the top of the screen for 3 seconds
+5. Administrators can manage instructions through the XAF UI without code deployment
+
+**Configuration:**
+- Sample instructions for Contact fields are seeded in [Updater.cs](XAFDocker.Module/DatabaseUpdate/Updater.cs)
+- Unique constraint ensures one instruction per field
+- Instructions can be disabled without deletion via IsEnabled flag
 
 ## Development Notes
 

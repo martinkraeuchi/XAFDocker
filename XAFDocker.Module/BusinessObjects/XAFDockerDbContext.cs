@@ -16,6 +16,7 @@ namespace XAFDocker.Module.BusinessObjects
         }
         //public DbSet<ModuleInfo> ModulesInfo { get; set; }
         public DbSet<Contact> Contacts { get; set; }
+        public DbSet<FieldInstruction> FieldInstructions { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -25,6 +26,11 @@ namespace XAFDocker.Module.BusinessObjects
             modelBuilder.SetOneToManyAssociationDeleteBehavior(DeleteBehavior.SetNull, DeleteBehavior.Cascade);
             modelBuilder.HasChangeTrackingStrategy(ChangeTrackingStrategy.ChangingAndChangedNotificationsWithOriginalValues);
             modelBuilder.UsePropertyAccessMode(PropertyAccessMode.PreferFieldDuringConstruction);
+
+            // Configure unique index for FieldInstruction
+            modelBuilder.Entity<FieldInstruction>()
+                .HasIndex(f => new { f.BusinessObjectType, f.PropertyName })
+                .IsUnique();
         }
     }
 }

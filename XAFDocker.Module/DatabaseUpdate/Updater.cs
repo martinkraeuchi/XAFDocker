@@ -18,14 +18,31 @@ namespace XAFDocker.Module.DatabaseUpdate
         public override void UpdateDatabaseAfterUpdateSchema()
         {
             base.UpdateDatabaseAfterUpdateSchema();
-            //string name = "MyName";
-            //EntityObject1 theObject = ObjectSpace.FirstOrDefault<EntityObject1>(u => u.Name == name);
-            //if(theObject == null) {
-            //    theObject = ObjectSpace.CreateObject<EntityObject1>();
-            //    theObject.Name = name;
-            //}
 
-            //ObjectSpace.CommitChanges(); //Uncomment this line to persist created object(s).
+            // Seed sample FieldInstruction records for Contact fields
+            CreateFieldInstructionIfNotExists("Contact", "FirstName", "Enter the contact's first name");
+            CreateFieldInstructionIfNotExists("Contact", "LastName", "Enter the contact's last name");
+            CreateFieldInstructionIfNotExists("Contact", "Email", "Enter a valid email address (required)");
+            CreateFieldInstructionIfNotExists("Contact", "Phone", "Enter phone number (e.g., +1-555-123-4567)");
+            CreateFieldInstructionIfNotExists("Contact", "Company", "Enter the company name where this contact works");
+            CreateFieldInstructionIfNotExists("Contact", "Notes", "Add any additional notes or comments about this contact");
+
+            ObjectSpace.CommitChanges();
+        }
+
+        private void CreateFieldInstructionIfNotExists(string businessObjectType, string propertyName, string instructionText)
+        {
+            var existing = ObjectSpace.GetObjectsQuery<BusinessObjects.FieldInstruction>()
+                .FirstOrDefault(f => f.BusinessObjectType == businessObjectType && f.PropertyName == propertyName);
+
+            if (existing == null)
+            {
+                var instruction = ObjectSpace.CreateObject<BusinessObjects.FieldInstruction>();
+                instruction.BusinessObjectType = businessObjectType;
+                instruction.PropertyName = propertyName;
+                instruction.InstructionText = instructionText;
+                instruction.IsEnabled = true;
+            }
         }
         public override void UpdateDatabaseBeforeUpdateSchema()
         {
