@@ -1,0 +1,102 @@
+services:
+  sqlserver:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    container_name: xafdocker-sqlserver-prod
+    environment:
+      - ACCEPT_EULA=Y
+      - MSSQL_SA_PASSWORD=${SQL_SA_PASSWORD}
+      - MSSQL_PID=Express
+    ports: []
+    volumes:
+      - sqlserver-data:/var/opt/mssql
+      - ./docker/sqlserver/init:/docker-entrypoint-initdb.d:ro
+    networks:
+      - xafdocker-network
+    restart: unless-stopped
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P "$${MSSQL_SA_PASSWORD}" -Q "SELECT 1" -C -b -o /dev/null
+      interval: 10s
+      timeout: 3s
+      retries: 10
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+          cpus: "1.0"
+        reservations:
+          memory: 1G
+          cpus: "0.5"
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: "3"
+        compress: "true"
+  xafapp:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: xafdocker-app-prod
+    depends_on:
+      - sqlserver
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - ASPNETCORE_URLS=http://+:80
+      - ConnectionStrings__ConnectionString=Server=sqlserver,1433;Database=XAFDocker;User Id=sa;Password=${SQL_SA_PASSWORD};TrustServerCertificate=True;MultipleActiveResultSets=True
+      - DevExpress__ExpressApp__Security__UrlSigningKey=${URL_SIGNING_KEY}
+      - Logging__LogLevel__Default=Warning
+      - Logging__LogLevel__Microsoft=Warning
+      - Logging__LogLevel__Microsoft.AspNetCore=Warning
+    ports:
+      - 5080:80
+    networks:
+      - xafdocker-network
+      - dokploy-network
+      - default
+    restart: unless-stopped
+    healthcheck:
+      test:
+        - CMD
+        - curl
+        - -f
+        - http://localhost:80/health
+      interval: 30s
+      timeout: 3s
+      retries: 3
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+          cpus: "0.5"
+        reservations:
+          memory: 512M
+          cpus: "0.25"
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: "3"
+        compress: "true"
+    labels:
+      - traefik.docker.network=dokploy-network
+      - traefik.http.routers.skg1-xafsqldockercompose-d-ul8ob5-34727-web.rule=Host(`xaf.skghub.ch`)
+      - traefik.http.routers.skg1-xafsqldockercompose-d-ul8ob5-34727-web.entrypoints=web
+      - traefik.http.services.skg1-xafsqldockercompose-d-ul8ob5-34727-web.loadbalancer.server.port=5080
+      - traefik.http.routers.skg1-xafsqldockercompose-d-ul8ob5-34727-web.service=skg1-xafsqldockercompose-d-ul8ob5-34727-web
+      - traefik.http.routers.skg1-xafsqldockercompose-d-ul8ob5-34727-web.middlewares=redirect-to-https@file
+      - traefik.http.routers.skg1-xafsqldockercompose-d-ul8ob5-34727-websecure.rule=Host(`xaf.skghub.ch`)
+      - traefik.http.routers.skg1-xafsqldockercompose-d-ul8ob5-34727-websecure.entrypoints=websecure
+      - traefik.http.services.skg1-xafsqldockercompose-d-ul8ob5-34727-websecure.loadbalancer.server.port=5080
+      - traefik.http.routers.skg1-xafsqldockercompose-d-ul8ob5-34727-websecure.service=skg1-xafsqldockercompose-d-ul8ob5-34727-websecure
+      - traefik.http.routers.skg1-xafsqldockercompose-d-ul8ob5-34727-websecure.tls.certresolver=letsencrypt
+      - traefik.enable=true
+networks:
+  xafdocker-network:
+    driver: bridge
+  dokploy-network:
+    external: true
+volumes:
+  sqlserver-data:
+    driver: local

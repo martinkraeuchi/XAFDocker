@@ -70,3 +70,13 @@ Analyze the situation and make a proposal and a plan with the further tasks
 - ✅ Create environment variable template
 - ✅ Document backup/restore procedures
 - ✅ Create docker compose commands cheat sheet
+
+
+### Task 9 - intercept event if an editor get the focus
+Create a Controller which incept editor controls like Text, Datepicker, Radio button, Switch, .. get the focus (mouse, keyboard).
+In the next step we will use these controller to display some instruction linked to the field represented by an editor control
+
+Analyze Task, ask questions, propose a solution, create a plan
+
+
+
