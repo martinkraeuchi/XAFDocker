@@ -40,11 +40,11 @@ services:
     deploy:
       resources:
         limits:
-          memory: 2G
+          memory: 4G
           cpus: '2.0'
         reservations:
-          memory: 1G
-          cpus: '0.5'
+          memory: 2G
+          cpus: '1.0'
     logging:
       driver: "json-file"
       options:
@@ -85,11 +85,11 @@ services:
     deploy:
       resources:
         limits:
-          memory: 1G
+          memory: 4G
           cpus: '2.0'
         reservations:
-          memory: 512M
-          cpus: '0.50'
+          memory: 2G
+          cpus: '1.00'
     logging:
       driver: "json-file"
       options:
