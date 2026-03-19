@@ -23,9 +23,10 @@ services:
       - ACCEPT_EULA=Y
       - MSSQL_SA_PASSWORD=${SQL_SA_PASSWORD}
       - MSSQL_PID=Express
-    # SECURITY: Port NOT exposed in production (internal network only)
-    # For external access, use a secure tunnel or VPN
-    ports: []
+    # SQL Server port exposed for external connections
+    # WARNING: Ensure strong SA password is set in environment variables
+    ports:
+      - "1433:1433"
     volumes:
       - sqlserver-data:/var/opt/mssql
       - ./docker/sqlserver/init:/docker-entrypoint-initdb.d:ro
