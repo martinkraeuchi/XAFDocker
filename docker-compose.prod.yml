@@ -23,6 +23,9 @@ services:
       - ACCEPT_EULA=Y
       - MSSQL_SA_PASSWORD=${SQL_SA_PASSWORD}
       - MSSQL_PID=Express
+      # Force encrypted connections
+      - MSSQL_ENCRYPT_CONNECTIONS=1
+      - MSSQL_FORCE_ENCRYPTION=1
     # SQL Server port exposed for external connections
     # WARNING: Ensure strong SA password is set in environment variables
     ports:
@@ -30,6 +33,9 @@ services:
     volumes:
       - sqlserver-data:/var/opt/mssql
       - ./docker/sqlserver/init:/docker-entrypoint-initdb.d:ro
+      # Mount SSL certificates (create these files first)
+      - ./docker/sqlserver/certs/mssql.pem:/var/opt/mssql/certs/mssql.pem:ro
+      - ./docker/sqlserver/certs/mssql.key:/var/opt/mssql/certs/mssql.key:ro
     networks:
       - xafdocker-network
     restart: unless-stopped
@@ -65,7 +71,7 @@ services:
       # PRODUCTION MODE
       - ASPNETCORE_ENVIRONMENT=Production
       - ASPNETCORE_URLS=http://+:80
-      - ConnectionStrings__ConnectionString=Server=sqlserver,1433;Database=XAFDocker;User Id=sa;Password=${SQL_SA_PASSWORD};TrustServerCertificate=True;MultipleActiveResultSets=True
+      - ConnectionStrings__ConnectionString=Server=sqlserver,1433;Database=XAFDocker;User Id=sa;Password=${SQL_SA_PASSWORD};Encrypt=True;TrustServerCertificate=True;MultipleActiveResultSets=True
       - DevExpress__ExpressApp__Security__UrlSigningKey=${URL_SIGNING_KEY}
       # Production Logging Levels
       - Logging__LogLevel__Default=Warning

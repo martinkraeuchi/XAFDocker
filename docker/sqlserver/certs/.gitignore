@@ -1,0 +1,9 @@
+# Ignore all certificate files to prevent committing private keys
+*.pem
+*.key
+*.crt
+*.cer
+*.pfx
+
+# Allow this .gitignore file
+!.gitignore
