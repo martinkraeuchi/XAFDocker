@@ -54,6 +54,11 @@ docker/certbot/www/
 backups/
 *.bak
 
+# DevExpress License Files - IMPORTANT: Never commit license keys
+DevExpress_License.txt
+.config/DevExpress/
+**/.config/DevExpress/
+
 # SQL Server files
 *.mdf
 *.ldf

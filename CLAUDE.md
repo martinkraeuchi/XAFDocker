@@ -136,6 +136,37 @@ Key configuration sections:
 
 The project uses **DevExpress 25.2.*** packages. When updating DevExpress versions, update all package references in both .csproj files simultaneously.
 
+### DevExpress License Configuration
+
+The project requires a DevExpress license key to eliminate build warnings (DX1000/DX1001). The license configuration works for both native Linux development and Docker deployments.
+
+**Setup for Local Development:**
+1. Add your license key to `.env` file:
+   ```
+   DevExpress_License="your-license-key-here"
+   ```
+2. Run the setup script:
+   ```bash
+   ./scripts/setup-devexpress-license.sh
+   ```
+3. Build the project (no warnings):
+   ```bash
+   dotnet build XAFDocker.sln
+   ```
+
+**Docker/Dokploy Deployment:**
+- The license key is automatically passed as a build argument from the `.env` file
+- For Dokploy: Add `DevExpress_License` to environment variables in the Dokploy UI
+- The Dockerfile creates the license file during the build stage
+
+**How to obtain your license key:**
+1. Visit [devexpress.com](https://devexpress.com)
+2. Login to your account (or register for a trial)
+3. Navigate to "My Account" → "License Keys"
+4. Copy your license key
+
+For detailed setup instructions, see [docs/DEVEXPRESS-LICENSE-SETUP.md](docs/DEVEXPRESS-LICENSE-SETUP.md).
+
 ## Key XAF Concepts
 
 1. **Object Space** - Unit of Work pattern for data access. Always use `IObjectSpace` for CRUD operations, never DbContext directly in XAF code.

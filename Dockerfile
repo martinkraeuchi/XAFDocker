@@ -2,6 +2,17 @@
 FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
 WORKDIR /src
 
+# DevExpress License Configuration
+# Accept license key as build argument and create license file
+ARG DevExpress_License
+RUN if [ -n "$DevExpress_License" ]; then \
+        mkdir -p /root/.config/DevExpress && \
+        echo "$DevExpress_License" > /root/.config/DevExpress/DevExpress_License.txt && \
+        echo "DevExpress license configured for build"; \
+    else \
+        echo "Warning: DevExpress_License not provided - build will show license warnings"; \
+    fi
+
 # Copy solution and project files
 COPY ["XAFDocker.sln", "./"]
 COPY ["XAFDocker.Blazor.Server/XAFDocker.Blazor.Server.csproj", "XAFDocker.Blazor.Server/"]

@@ -64,6 +64,8 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+      args:
+        - DevExpress_License=${DevExpress_License}
     container_name: xafdocker-app-prod
     depends_on:
       - sqlserver
