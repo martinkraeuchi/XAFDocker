@@ -55,12 +55,26 @@ echo "$LICENSE_KEY" > "$LICENSE_FILE"
 # Set appropriate permissions
 chmod 644 "$LICENSE_FILE"
 
+# Also create Docker license directory
+DOCKER_LICENSE_DIR="$PROJECT_ROOT/.devexpress-license"
+DOCKER_LICENSE_FILE="$DOCKER_LICENSE_DIR/DevExpress_License.txt"
+
+echo "📁 Creating Docker license directory: $DOCKER_LICENSE_DIR"
+mkdir -p "$DOCKER_LICENSE_DIR"
+
+echo "📝 Writing license key for Docker: $DOCKER_LICENSE_FILE"
+echo "$LICENSE_KEY" > "$DOCKER_LICENSE_FILE"
+chmod 644 "$DOCKER_LICENSE_FILE"
+
 echo ""
 echo "✅ DevExpress license configured successfully!"
 echo ""
-echo "License file location: $LICENSE_FILE"
+echo "License file locations:"
+echo "  Native Linux: $LICENSE_FILE"
+echo "  Docker build: $DOCKER_LICENSE_FILE"
 echo "License key (first 20 chars): ${LICENSE_KEY:0:20}..."
 echo ""
-echo "You can now build the project without license warnings:"
-echo "  dotnet build XAFDocker.sln"
+echo "You can now build without license warnings:"
+echo "  Native: dotnet build XAFDocker.sln"
+echo "  Docker: docker compose build"
 echo ""

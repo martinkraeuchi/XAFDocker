@@ -58,6 +58,7 @@ backups/
 DevExpress_License.txt
 .config/DevExpress/
 **/.config/DevExpress/
+.devexpress-license/
 
 # SQL Server files
 *.mdf
