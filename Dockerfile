@@ -3,9 +3,17 @@ FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
 WORKDIR /src
 
 # DevExpress License Configuration
-# Copy license file from host
-RUN mkdir -p /root/.config/DevExpress
-COPY .devexpress-license/DevExpress_License.txt /root/.config/DevExpress/DevExpress_License.txt
+# Hybrid approach: Use local file if available (dev), otherwise use build ARG (Dokploy)
+ARG DevExpress_License
+
+# Copy license directory (may only contain .dockerkeep in Dokploy, that's OK)
+COPY .devexpress-license /tmp/local-license
+
+# Copy and run configuration script
+COPY docker/build/configure-license.sh /tmp/configure-license.sh
+RUN chmod +x /tmp/configure-license.sh && \
+    /tmp/configure-license.sh && \
+    rm -rf /tmp/configure-license.sh /tmp/local-license
 
 # Copy solution and project files
 COPY ["XAFDocker.sln", "./"]

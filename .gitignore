@@ -59,6 +59,7 @@ DevExpress_License.txt
 .config/DevExpress/
 **/.config/DevExpress/
 .devexpress-license/
+!.devexpress-license/.dockerkeep
 
 # SQL Server files
 *.mdf

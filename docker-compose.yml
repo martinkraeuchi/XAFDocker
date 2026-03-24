@@ -27,8 +27,9 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-      args:
-        - DevExpress_License=${DevExpress_License}
+      # Note: DevExpress_License build arg removed for local development
+      # License is copied from .devexpress-license/ directory instead
+      # This prevents environment variable interference with file-based license
     container_name: xafdocker-app
     depends_on:
       - sqlserver

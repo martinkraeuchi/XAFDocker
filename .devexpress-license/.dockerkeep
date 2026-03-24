@@ -1,0 +1,2 @@
+# This file ensures the .devexpress-license directory always exists for Docker COPY
+# The actual DevExpress_License.txt file is created by setup script and git-ignored
