@@ -206,3 +206,47 @@ A contextual help system that displays instructions when users focus on editor c
 - Use XAF attributes (e.g., `[DefaultClassOptions]`, `[RuleRequiredField]`) to control UI generation and validation
 - The `.vs/` directory contains Visual Studio user settings and should remain in .gitignore
 - For Blazor-specific services, see `XAFDocker.Blazor.Server/Services/` (e.g., CircuitHandlerProxy for SignalR circuit lifecycle management)
+
+### Backup System
+
+An automated backup system for SQL Server database with FTP transfer.
+
+**Architecture:**
+- **[Backup Container](docker/backup/)** - Dedicated container with cron scheduler
+- **[Backup Script](docker/backup/backup.sh)** - Main backup logic with FTP transfer
+- **[Entrypoint Script](docker/backup/entrypoint.sh)** - Cron setup and validation
+
+**How it works:**
+1. Cron runs backup script daily at 11:30 PM (configurable via BACKUP_SCHEDULE)
+2. Creates backup file: `xafdocker{YYYYMMDDHHMM}.bak` with COMPRESSION and CHECKSUM
+3. Uploads to FTP server immediately after successful backup
+4. Cleans up files older than 7 days (local and FTP) based on filename timestamp
+5. Sends webhook notifications on failures
+
+**Configuration:**
+- Environment variables in `.env` file (see `.env.example`)
+- Backup files stored in `backup-data` Docker volume
+- Retention based on timestamp parsed from filename pattern
+
+**Manual operations:**
+```bash
+# Trigger immediate backup
+docker exec xafdocker-backup /app/backup.sh
+
+# List backups
+docker exec xafdocker-backup ls -lh /backups
+
+# View logs
+docker logs -f xafdocker-backup
+```
+
+**Restoration procedure:**
+```bash
+# Copy backup file to SQL Server container
+docker cp backup.bak xafdocker-sqlserver:/tmp/
+
+# Restore database
+docker exec xafdocker-sqlserver /opt/mssql-tools18/bin/sqlcmd \
+  -S localhost -U sa -P "$SQL_SA_PASSWORD" -C \
+  -Q "RESTORE DATABASE [XAFDocker] FROM DISK='/tmp/backup.bak' WITH REPLACE"
+```
