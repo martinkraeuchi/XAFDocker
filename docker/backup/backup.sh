@@ -98,6 +98,78 @@ backup_database() {
     return 1
 }
 
+# Upload backup file to FTP server
+upload_to_ftp() {
+    local local_file="$1"
+    local filename=$(basename "$local_file")
+    local remote_file="$FTP_PATH/$filename"
+
+    log "INFO" "FTP upload started: $filename"
+    log "INFO" "Destination: $FTP_HOST:$FTP_PORT$remote_file"
+
+    # Build lftp command
+    local ftp_protocol="ftp"
+    if [ "$FTP_USE_TLS" = "true" ]; then
+        ftp_protocol="ftps"
+    fi
+
+    # Upload with retry logic
+    local retry=0
+    local max_retries=3
+
+    while [ $retry -lt $max_retries ]; do
+        if [ $retry -gt 0 ]; then
+            log "WARN" "FTP retry attempt $retry of $max_retries"
+            sleep 30
+        fi
+
+        # Execute lftp upload
+        if lftp -c "
+            set ftp:ssl-allow $([ \"$FTP_USE_TLS\" = \"true\" ] && echo \"yes\" || echo \"no\");
+            set ftp:ssl-force $([ \"$FTP_USE_TLS\" = \"true\" ] && echo \"yes\" || echo \"no\");
+            set ssl:verify-certificate no;
+            open -u $FTP_USER,$FTP_PASSWORD -p $FTP_PORT $ftp_protocol://$FTP_HOST;
+            mkdir -p $FTP_PATH;
+            put -O $FTP_PATH $local_file;
+            bye
+        " > /tmp/ftp.log 2>&1; then
+
+            # Verify file size
+            local local_size=$(stat -c%s "$local_file")
+            local remote_size=$(lftp -c "
+                set ftp:ssl-allow $([ \"$FTP_USE_TLS\" = \"true\" ] && echo \"yes\" || echo \"no\");
+                set ssl:verify-certificate no;
+                open -u $FTP_USER,$FTP_PASSWORD -p $FTP_PORT $ftp_protocol://$FTP_HOST;
+                cls -l $remote_file | awk '{print \$5}';
+                bye
+            " 2>/dev/null || echo "0")
+
+            if [ "$local_size" = "$remote_size" ]; then
+                log "INFO" "FTP upload completed: $filename (${local_size} bytes)"
+                return 0
+            else
+                log "WARN" "File size mismatch: local=$local_size remote=$remote_size, retrying..."
+                # Delete incomplete file
+                lftp -c "
+                    set ftp:ssl-allow $([ \"$FTP_USE_TLS\" = \"true\" ] && echo \"yes\" || echo \"no\");
+                    set ssl:verify-certificate no;
+                    open -u $FTP_USER,$FTP_PASSWORD -p $FTP_PORT $ftp_protocol://$FTP_HOST;
+                    rm -f $remote_file;
+                    bye
+                " > /dev/null 2>&1 || true
+                retry=$((retry + 1))
+            fi
+        else
+            log "ERROR" "FTP upload attempt $((retry + 1)) failed:"
+            cat /tmp/ftp.log | while read line; do log "ERROR" "$line"; done
+            retry=$((retry + 1))
+        fi
+    done
+
+    log "ERROR" "FTP upload failed after $max_retries attempts"
+    return 1
+}
+
 # Main execution
 main() {
     log "INFO" "Backup process started"
@@ -110,6 +182,12 @@ main() {
     fi
 
     log "INFO" "Backup file created: $backup_file"
+
+    # Upload to FTP server
+    if ! upload_to_ftp "$backup_file"; then
+        send_webhook "failure" "ftp_upload" "FTP upload failed" "$backup_file"
+        return 1
+    fi
 
     log "INFO" "Backup process completed"
 }
