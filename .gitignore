@@ -68,3 +68,6 @@ DevExpress_License.txt
 # Logs
 logs/
 *.log
+
+# Git worktrees
+.worktrees/
