@@ -32,3 +32,15 @@ dotnet build XAFDocker.sln
 # Docker build
 docker compose -f docker-compose.prod.yml build
 ```
+
+Story 2 - Backup of SQL-Server
+As data is very important, we need to back up the MSSQL Server database. MSSQL Server provides a function for creating database backups, which must be invoked once a day at 11.30pm. The backup file must then be placed on the mounted share.
+
+analyze the task, ask questions, use superpower skills and create a plan
+
+## additional information:
+Backup files must follow this format: `{prefix}{YYYYMMDDHHMM}.{extension}`
+
+Examples:
+- `xafdocker202603220045.zip`
+- `SKGFormDEV202603150048.bak`
