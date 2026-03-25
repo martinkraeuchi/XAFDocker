@@ -120,7 +120,11 @@ docker compose logs -f nginx
 
 ### Restart a Service
 ```bash
+docker compose restart 
+docker compose restart [servicename]
+e.g.
 docker compose restart xafapp
+docker compose restart backup
 ```
 
 ### Rebuild and Restart Application

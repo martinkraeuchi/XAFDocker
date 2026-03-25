@@ -78,3 +78,6 @@ Backup files must follow this format: `{prefix}{YYYYMMDDHHMM}.{extension}`
 Examples:
 - `xafdocker202603220045.zip`
 - `SKGFormDEV202603150048.bak`
+
+Trigger Backup in Docker:
+docker exec xafdocker-backup /app/backup.sh
