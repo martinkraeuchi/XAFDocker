@@ -107,6 +107,141 @@ else
 fi
 echo ""
 
+# Test 7: Upload and delete test file (Plain FTP)
+echo "Test 7: Upload/Delete test file (Plain FTP)"
+echo "----------------------------------------------"
+TEST_FILE="/tmp/ftp-test-$(date +%s).txt"
+echo "Test file created at $(date)" > "$TEST_FILE"
+echo "Created test file: $TEST_FILE"
+lftp -c "
+    set ftp:ssl-allow no;
+    set ftp:ssl-force no;
+    open -u \"$FTP_USER\",\"$FTP_PASSWORD\" -p $FTP_PORT ftp://$FTP_HOST;
+    put -O \"$FTP_PATH\" \"$TEST_FILE\";
+    ls \"$FTP_PATH/$(basename $TEST_FILE)\";
+    rm \"$FTP_PATH/$(basename $TEST_FILE)\";
+    bye
+" 2>&1
+RESULT=$?
+rm -f "$TEST_FILE"
+if [ $RESULT -eq 0 ]; then
+    echo "✓ Upload and delete successful"
+else
+    echo "✗ Upload or delete failed (exit code: $RESULT)"
+fi
+echo ""
+
+# Test 8: Upload and delete test file (Explicit FTPS)
+echo "Test 8: Upload/Delete test file (Explicit FTPS)"
+echo "----------------------------------------------"
+TEST_FILE="/tmp/ftp-test-$(date +%s).txt"
+echo "Test file created at $(date)" > "$TEST_FILE"
+echo "Created test file: $TEST_FILE"
+lftp -c "
+    set ftp:ssl-allow yes;
+    set ftp:ssl-force yes;
+    set ftp:ssl-protect-data yes;
+    set ftp:ssl-protect-list yes;
+    set ssl:verify-certificate no;
+    open -u \"$FTP_USER\",\"$FTP_PASSWORD\" -p $FTP_PORT ftp://$FTP_HOST;
+    put -O \"$FTP_PATH\" \"$TEST_FILE\";
+    ls \"$FTP_PATH/$(basename $TEST_FILE)\";
+    rm \"$FTP_PATH/$(basename $TEST_FILE)\";
+    bye
+" 2>&1
+RESULT=$?
+rm -f "$TEST_FILE"
+if [ $RESULT -eq 0 ]; then
+    echo "✓ Upload and delete successful (encrypted)"
+else
+    echo "✗ Upload or delete failed (exit code: $RESULT)"
+fi
+echo ""
+
+# Test 9: Upload and delete specific file "testonly.txt"
+echo "Test 9: Upload/Delete testonly.txt (Explicit FTPS)"
+echo "----------------------------------------------"
+TEST_FILE="/tmp/testonly.txt"
+echo "This is a test file created at $(date)" > "$TEST_FILE"
+echo "File size: $(stat -c%s "$TEST_FILE") bytes"
+echo ""
+
+echo "Step 1: Uploading testonly.txt..."
+lftp -c "
+    set ftp:ssl-allow yes;
+    set ftp:ssl-force yes;
+    set ftp:ssl-protect-data yes;
+    set ftp:ssl-protect-list yes;
+    set ssl:verify-certificate no;
+    open -u \"$FTP_USER\",\"$FTP_PASSWORD\" -p $FTP_PORT ftp://$FTP_HOST;
+    put -O \"$FTP_PATH\" \"$TEST_FILE\";
+    bye
+" 2>&1
+if [ $? -eq 0 ]; then
+    echo "✓ Upload successful"
+else
+    echo "✗ Upload failed"
+fi
+echo ""
+
+echo "Step 2: Verifying file exists on server..."
+lftp -c "
+    set ftp:ssl-allow yes;
+    set ftp:ssl-force yes;
+    set ftp:ssl-protect-data yes;
+    set ftp:ssl-protect-list yes;
+    set ssl:verify-certificate no;
+    open -u \"$FTP_USER\",\"$FTP_PASSWORD\" -p $FTP_PORT ftp://$FTP_HOST;
+    ls -l \"$FTP_PATH/testonly.txt\";
+    bye
+" 2>&1
+if [ $? -eq 0 ]; then
+    echo "✓ File verified on server"
+else
+    echo "✗ File not found on server"
+fi
+echo ""
+
+echo "Step 3: Deleting testonly.txt..."
+lftp -c "
+    set ftp:ssl-allow yes;
+    set ftp:ssl-force yes;
+    set ftp:ssl-protect-data yes;
+    set ftp:ssl-protect-list yes;
+    set ssl:verify-certificate no;
+    open -u \"$FTP_USER\",\"$FTP_PASSWORD\" -p $FTP_PORT ftp://$FTP_HOST;
+    rm \"$FTP_PATH/testonly.txt\";
+    bye
+" 2>&1
+if [ $? -eq 0 ]; then
+    echo "✓ Delete successful"
+else
+    echo "✗ Delete failed"
+fi
+echo ""
+
+echo "Step 4: Verifying file was deleted..."
+VERIFY_OUTPUT=$(lftp -c "
+    set ftp:ssl-allow yes;
+    set ftp:ssl-force yes;
+    set ftp:ssl-protect-data yes;
+    set ftp:ssl-protect-list yes;
+    set ssl:verify-certificate no;
+    open -u \"$FTP_USER\",\"$FTP_PASSWORD\" -p $FTP_PORT ftp://$FTP_HOST;
+    ls -l \"$FTP_PATH/testonly.txt\";
+    bye
+" 2>&1)
+if [ -z "$VERIFY_OUTPUT" ]; then
+    echo "✓ File successfully deleted from server"
+else
+    echo "✗ File still exists on server:"
+    echo "$VERIFY_OUTPUT"
+fi
+
+# Cleanup local test file
+rm -f "$TEST_FILE"
+echo ""
+
 echo "=============================================="
 echo "Test Complete"
 echo "=============================================="

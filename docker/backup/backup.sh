@@ -154,11 +154,9 @@ upload_to_ftp() {
     log "INFO" "FTP upload started: $filename"
     log "INFO" "Destination: $FTP_HOST:$FTP_PORT$remote_file"
 
-    # Build lftp command
+    # Always use ftp:// protocol for explicit FTPS (port 21 with AUTH TLS)
+    # Use ftps:// only for implicit FTPS (port 990)
     local ftp_protocol="ftp"
-    if [ "$FTP_USE_TLS" = "true" ]; then
-        ftp_protocol="ftps"
-    fi
 
     # Upload with retry logic
     local retry=0
