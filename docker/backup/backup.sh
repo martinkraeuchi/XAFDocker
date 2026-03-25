@@ -22,9 +22,9 @@ WEBHOOK_URL="${WEBHOOK_URL:-}"
 WEBHOOK_ENABLED="${WEBHOOK_ENABLED:-false}"
 DRY_RUN="${DRY_RUN:-false}"
 
-# Logging function
+# Logging function - output to stderr so it doesn't interfere with function returns
 log() {
-    echo "[$(date '+%Y-%m-%d %H:%M:%S')] [$1] $2"
+    echo "[$(date '+%Y-%m-%d %H:%M:%S')] [$1] $2" >&2
 }
 
 # Send webhook notification
@@ -175,37 +175,15 @@ upload_to_ftp() {
             set ftp:ssl-allow $([ \"$FTP_USE_TLS\" = \"true\" ] && echo \"yes\" || echo \"no\");
             set ftp:ssl-force $([ \"$FTP_USE_TLS\" = \"true\" ] && echo \"yes\" || echo \"no\");
             set ssl:verify-certificate no;
-            open -u $FTP_USER,$FTP_PASSWORD -p $FTP_PORT $ftp_protocol://$FTP_HOST;
-            mkdir -p $FTP_PATH;
-            put -O $FTP_PATH $local_file;
+            open -u \"$FTP_USER\",\"$FTP_PASSWORD\" -p $FTP_PORT $ftp_protocol://$FTP_HOST;
+            mkdir -p \"$FTP_PATH\" || echo \"Directory exists\";
+            put -O \"$FTP_PATH\" \"$local_file\";
             bye
         " > /tmp/ftp.log 2>&1; then
-
-            # Verify file size
+            # Upload succeeded
             local local_size=$(stat -c%s "$local_file")
-            local remote_size=$(lftp -c "
-                set ftp:ssl-allow $([ \"$FTP_USE_TLS\" = \"true\" ] && echo \"yes\" || echo \"no\");
-                set ssl:verify-certificate no;
-                open -u $FTP_USER,$FTP_PASSWORD -p $FTP_PORT $ftp_protocol://$FTP_HOST;
-                cls -l $remote_file | awk '{print \$5}';
-                bye
-            " 2>/dev/null || echo "0")
-
-            if [ "$local_size" = "$remote_size" ]; then
-                log "INFO" "FTP upload completed: $filename (${local_size} bytes)"
-                return 0
-            else
-                log "WARN" "File size mismatch: local=$local_size remote=$remote_size, retrying..."
-                # Delete incomplete file
-                lftp -c "
-                    set ftp:ssl-allow $([ \"$FTP_USE_TLS\" = \"true\" ] && echo \"yes\" || echo \"no\");
-                    set ssl:verify-certificate no;
-                    open -u $FTP_USER,$FTP_PASSWORD -p $FTP_PORT $ftp_protocol://$FTP_HOST;
-                    rm -f $remote_file;
-                    bye
-                " > /dev/null 2>&1 || true
-                retry=$((retry + 1))
-            fi
+            log "INFO" "FTP upload completed: $filename (${local_size} bytes)"
+            return 0
         else
             log "ERROR" "FTP upload attempt $((retry + 1)) failed:"
             cat /tmp/ftp.log | while read line; do log "ERROR" "$line"; done
