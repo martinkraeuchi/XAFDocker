@@ -255,7 +255,7 @@ cleanup_ftp_backups() {
     fi
 
     # Process each file
-    echo "$ftp_files" | while read filename; do
+    while read filename; do
         [ -z "$filename" ] && continue
 
         local timestamp=$(parse_timestamp_from_filename "$(basename "$filename")")
@@ -287,7 +287,7 @@ cleanup_ftp_backups() {
 
             deleted_count=$((deleted_count + 1))
         fi
-    done
+    done < <(echo "$ftp_files")
 
     log "INFO" "Cleanup completed: $deleted_count FTP file(s) deleted"
 }
