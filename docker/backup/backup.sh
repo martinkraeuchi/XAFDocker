@@ -27,12 +27,59 @@ log() {
     echo "[$(date '+%Y-%m-%d %H:%M:%S')] [$1] $2"
 }
 
-# Send webhook notification (placeholder - full implementation in Task 5)
+# Send webhook notification
 send_webhook() {
-    # Placeholder: webhook functionality will be implemented in Task 5
-    # Parameters: status, operation, error, backup_file
-    if [ "$WEBHOOK_ENABLED" = "true" ]; then
-        log "WARN" "Webhook not yet implemented: $1 $2 $3"
+    local status="$1"      # success or failure
+    local operation="$2"   # backup, ftp_upload, cleanup
+    local error="$3"       # error message
+    local backup_file="$4" # backup filename
+
+    # Skip if webhooks disabled
+    if [ "$WEBHOOK_ENABLED" != "true" ] || [ -z "$WEBHOOK_URL" ]; then
+        return 0
+    fi
+
+    local timestamp=$(date -u '+%Y-%m-%dT%H:%M:%SZ')
+    local file_size=""
+    local duration=""
+
+    if [ -n "$backup_file" ] && [ -f "$backup_file" ]; then
+        file_size=$(du -h "$backup_file" | cut -f1)
+    fi
+
+    # Build JSON payload
+    local payload=$(cat <<EOF
+{
+  "timestamp": "$timestamp",
+  "status": "$status",
+  "service": "sql-backup",
+  "database": "$BACKUP_DATABASE",
+  "operation": "$operation",
+  "error": "$error",
+  "details": {
+    "backup_file": "$(basename "$backup_file")",
+    "file_size": "$file_size",
+    "ftp_host": "$FTP_HOST",
+    "retention_days": "$BACKUP_RETENTION_DAYS"
+  }
+}
+EOF
+    )
+
+    log "INFO" "Sending webhook notification: $status - $operation"
+
+    # Send webhook with timeout
+    if curl -X POST "$WEBHOOK_URL" \
+        -H "Content-Type: application/json" \
+        -d "$payload" \
+        --max-time 10 \
+        --silent \
+        --show-error \
+        > /tmp/webhook.log 2>&1; then
+        log "INFO" "Webhook notification sent successfully"
+    else
+        log "WARN" "Webhook notification failed (non-critical):"
+        cat /tmp/webhook.log | while read line; do log "WARN" "$line"; done
     fi
 }
 
@@ -294,6 +341,20 @@ cleanup_ftp_backups() {
 
 # Main execution
 main() {
+    # Prevent concurrent backups
+    local lock_file="/tmp/backup.lock"
+
+    if [ -f "$lock_file" ]; then
+        log "WARN" "Previous backup still running (lock file exists), skipping"
+        return 0
+    fi
+
+    # Create lock file
+    touch "$lock_file"
+
+    # Ensure lock file is removed on exit
+    trap "rm -f $lock_file" EXIT INT TERM
+
     log "INFO" "Backup process started"
 
     # Perform database backup
