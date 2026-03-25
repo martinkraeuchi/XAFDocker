@@ -1,13 +1,24 @@
-FROM mcr.microsoft.com/mssql-tools:latest
+FROM ubuntu:22.04
 
-# Install required packages
-RUN apt-get update && apt-get install -y \
-    lftp \
+# Install SQL Server command-line tools and required packages
+RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y \
     curl \
+    apt-transport-https \
+    gnupg \
+    && curl https://packages.microsoft.com/keys/microsoft.asc | apt-key add - \
+    && curl https://packages.microsoft.com/config/ubuntu/22.04/prod.list > /etc/apt/sources.list.d/mssql-release.list \
+    && apt-get update \
+    && ACCEPT_EULA=Y apt-get install -y \
+    mssql-tools18 \
+    unixodbc-dev \
+    lftp \
     cron \
     findutils \
     procps \
     && rm -rf /var/lib/apt/lists/*
+
+# Add mssql-tools to PATH
+ENV PATH="${PATH}:/opt/mssql-tools18/bin"
 
 # Create app directory
 WORKDIR /app

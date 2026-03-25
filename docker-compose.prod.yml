@@ -33,6 +33,7 @@ services:
     volumes:
       - sqlserver-data:/var/opt/mssql
       - ./docker/sqlserver/init:/docker-entrypoint-initdb.d:ro
+      - backup-data:/backups
       # Mount SSL certificates (create these files first)
       - ./docker/sqlserver/certs/mssql.pem:/var/opt/mssql/certs/mssql.pem:ro
       - ./docker/sqlserver/certs/mssql.key:/var/opt/mssql/certs/mssql.key:ro
@@ -120,7 +121,7 @@ services:
       - SQL_SERVER=sqlserver
       - SQL_PORT=1433
       - SQL_USER=sa
-      - BACKUP_SCHEDULE=${BACKUP_SCHEDULE:-30 23 * * *}
+      - BACKUP_SCHEDULE=${BACKUP_SCHEDULE}
       - BACKUP_RETENTION_DAYS=${BACKUP_RETENTION_DAYS:-7}
       - BACKUP_DATABASE=${BACKUP_DATABASE:-XAFDocker}
       - TZ=${TZ:-UTC}

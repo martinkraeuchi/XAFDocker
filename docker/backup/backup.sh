@@ -123,9 +123,9 @@ backup_database() {
         # Use environment variable for password (more secure than -P flag)
         export SQLCMDPASSWORD="$SQL_PASSWORD"
 
-        # Execute T-SQL backup command
+        # Execute T-SQL backup command (without COMPRESSION for Express Edition compatibility)
         if /opt/mssql-tools18/bin/sqlcmd -S "$SQL_SERVER,$SQL_PORT" -U "$SQL_USER" -C -b -Q \
-            "BACKUP DATABASE [$BACKUP_DATABASE] TO DISK = N'$backup_file' WITH FORMAT, COMPRESSION, CHECKSUM;" > /tmp/backup.log 2>&1; then
+            "BACKUP DATABASE [$BACKUP_DATABASE] TO DISK = N'$backup_file' WITH FORMAT, CHECKSUM;" > /tmp/backup.log 2>&1; then
 
             local end_time=$(date +%s)
             local duration=$((end_time - start_time))

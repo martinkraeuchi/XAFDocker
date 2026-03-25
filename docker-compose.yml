@@ -13,6 +13,7 @@ services:
     volumes:
       - sqlserver-data:/var/opt/mssql
       - ./docker/sqlserver/init:/docker-entrypoint-initdb.d:ro
+      - backup-data:/backups
     networks:
       - xafdocker-network
     restart: unless-stopped
@@ -63,18 +64,18 @@ services:
       - SQL_SERVER=sqlserver
       - SQL_PORT=1433
       - SQL_USER=sa
-      - BACKUP_SCHEDULE=${BACKUP_SCHEDULE:-30 23 * * *}
-      - BACKUP_RETENTION_DAYS=${BACKUP_RETENTION_DAYS:-7}
-      - BACKUP_DATABASE=${BACKUP_DATABASE:-XAFDocker}
-      - TZ=${TZ:-UTC}
+      - BACKUP_SCHEDULE=${BACKUP_SCHEDULE}
+      - BACKUP_RETENTION_DAYS=${BACKUP_RETENTION_DAYS}
+      - BACKUP_DATABASE=${BACKUP_DATABASE}
+      - TZ=${TZ}
       - FTP_HOST=${FTP_HOST}
-      - FTP_PORT=${FTP_PORT:-21}
+      - FTP_PORT=${FTP_PORT}
       - FTP_USER=${FTP_USER}
       - FTP_PASSWORD=${FTP_PASSWORD}
       - FTP_PATH=${FTP_PATH}
-      - FTP_USE_TLS=${FTP_USE_TLS:-true}
+      - FTP_USE_TLS=${FTP_USE_TLS}
       - WEBHOOK_URL=${WEBHOOK_URL}
-      - WEBHOOK_ENABLED=${WEBHOOK_ENABLED:-false}
+      - WEBHOOK_ENABLED=${WEBHOOK_ENABLED}
     volumes:
       - backup-data:/backups
     networks:
