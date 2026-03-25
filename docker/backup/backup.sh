@@ -27,11 +27,77 @@ log() {
     echo "[$(date '+%Y-%m-%d %H:%M:%S')] [$1] $2"
 }
 
+# Generate backup filename with timestamp
+generate_backup_filename() {
+    local timestamp=$(date '+%Y%m%d%H%M')
+    echo "xafdocker${timestamp}.bak"
+}
+
+# Perform SQL Server database backup
+backup_database() {
+    local backup_file="$BACKUP_DIR/$(generate_backup_filename)"
+
+    log "INFO" "Backup started: $BACKUP_DATABASE"
+    log "INFO" "Backup file: $backup_file"
+
+    # Check disk space
+    local available_kb=$(df -k "$BACKUP_DIR" | tail -1 | awk '{print $4}')
+    local available_mb=$((available_kb / 1024))
+    log "INFO" "Available disk space: ${available_mb}MB"
+
+    if [ "$available_mb" -lt 1024 ]; then
+        log "ERROR" "Insufficient disk space: ${available_mb}MB available, 1GB minimum required"
+        return 1
+    fi
+
+    # Create backup directory if it doesn't exist
+    mkdir -p "$BACKUP_DIR"
+
+    # Execute backup with retry logic
+    local retry=0
+    local max_retries=3
+    local start_time=$(date +%s)
+
+    while [ $retry -lt $max_retries ]; do
+        if [ $retry -gt 0 ]; then
+            log "WARN" "Retry attempt $retry of $max_retries"
+            sleep 10
+        fi
+
+        # Execute T-SQL backup command
+        if /opt/mssql-tools18/bin/sqlcmd -S "$SQL_SERVER,$SQL_PORT" -U "$SQL_USER" -P "$SQL_PASSWORD" -C -b -Q \
+            "BACKUP DATABASE [$BACKUP_DATABASE] TO DISK = N'$backup_file' WITH FORMAT, COMPRESSION, CHECKSUM;" > /tmp/backup.log 2>&1; then
+
+            local end_time=$(date +%s)
+            local duration=$((end_time - start_time))
+            local file_size=$(du -h "$backup_file" | cut -f1)
+
+            log "INFO" "Backup completed: $file_size in ${duration}s"
+            echo "$backup_file"
+            return 0
+        else
+            log "ERROR" "Backup attempt $((retry + 1)) failed:"
+            cat /tmp/backup.log | while read line; do log "ERROR" "$line"; done
+            retry=$((retry + 1))
+        fi
+    done
+
+    log "ERROR" "Backup failed after $max_retries attempts"
+    return 1
+}
+
 # Main execution
 main() {
     log "INFO" "Backup process started"
 
-    # TODO: Implement backup workflow
+    # Perform database backup
+    local backup_file
+    if ! backup_file=$(backup_database); then
+        send_webhook "failure" "backup" "Database backup failed" ""
+        return 1
+    fi
+
+    log "INFO" "Backup file created: $backup_file"
 
     log "INFO" "Backup process completed"
 }
