@@ -27,6 +27,15 @@ log() {
     echo "[$(date '+%Y-%m-%d %H:%M:%S')] [$1] $2"
 }
 
+# Send webhook notification (placeholder - full implementation in Task 5)
+send_webhook() {
+    # Placeholder: webhook functionality will be implemented in Task 5
+    # Parameters: status, operation, error, backup_file
+    if [ "$WEBHOOK_ENABLED" = "true" ]; then
+        log "WARN" "Webhook not yet implemented: $1 $2 $3"
+    fi
+}
+
 # Generate backup filename with timestamp
 generate_backup_filename() {
     local timestamp=$(date '+%Y%m%d%H%M')
@@ -64,8 +73,11 @@ backup_database() {
             sleep 10
         fi
 
+        # Use environment variable for password (more secure than -P flag)
+        export SQLCMDPASSWORD="$SQL_PASSWORD"
+
         # Execute T-SQL backup command
-        if /opt/mssql-tools18/bin/sqlcmd -S "$SQL_SERVER,$SQL_PORT" -U "$SQL_USER" -P "$SQL_PASSWORD" -C -b -Q \
+        if /opt/mssql-tools18/bin/sqlcmd -S "$SQL_SERVER,$SQL_PORT" -U "$SQL_USER" -C -b -Q \
             "BACKUP DATABASE [$BACKUP_DATABASE] TO DISK = N'$backup_file' WITH FORMAT, COMPRESSION, CHECKSUM;" > /tmp/backup.log 2>&1; then
 
             local end_time=$(date +%s)
