@@ -49,10 +49,49 @@ services:
       timeout: 3s
       retries: 3
 
+  # Backup service for SQL Server
+  backup:
+    build:
+      context: ./docker/backup
+      dockerfile: Dockerfile
+    container_name: xafdocker-backup
+    depends_on:
+      sqlserver:
+        condition: service_healthy
+    environment:
+      - SQL_SA_PASSWORD=${SQL_SA_PASSWORD}
+      - SQL_SERVER=sqlserver
+      - SQL_PORT=1433
+      - SQL_USER=sa
+      - BACKUP_SCHEDULE=${BACKUP_SCHEDULE:-30 23 * * *}
+      - BACKUP_RETENTION_DAYS=${BACKUP_RETENTION_DAYS:-7}
+      - BACKUP_DATABASE=${BACKUP_DATABASE:-XAFDocker}
+      - TZ=${TZ:-UTC}
+      - FTP_HOST=${FTP_HOST}
+      - FTP_PORT=${FTP_PORT:-21}
+      - FTP_USER=${FTP_USER}
+      - FTP_PASSWORD=${FTP_PASSWORD}
+      - FTP_PATH=${FTP_PATH}
+      - FTP_USE_TLS=${FTP_USE_TLS:-true}
+      - WEBHOOK_URL=${WEBHOOK_URL}
+      - WEBHOOK_ENABLED=${WEBHOOK_ENABLED:-false}
+    volumes:
+      - backup-data:/backups
+    networks:
+      - xafdocker-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "pgrep", "crond"]
+      interval: 60s
+      timeout: 3s
+      retries: 3
+
 networks:
   xafdocker-network:
     driver: bridge
 
 volumes:
   sqlserver-data:
+    driver: local
+  backup-data:
     driver: local
