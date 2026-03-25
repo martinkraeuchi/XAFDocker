@@ -170,6 +170,128 @@ upload_to_ftp() {
     return 1
 }
 
+# Parse timestamp from filename (xafdockerYYYYMMDDHHMM.bak)
+parse_timestamp_from_filename() {
+    local filename="$1"
+    # Extract 12-digit timestamp: YYYYMMDDHHMM
+    echo "$filename" | grep -oP '(?<=xafdocker)\d{12}(?=\.bak)'
+}
+
+# Convert timestamp to epoch seconds
+timestamp_to_epoch() {
+    local timestamp="$1"
+    local year="${timestamp:0:4}"
+    local month="${timestamp:4:2}"
+    local day="${timestamp:6:2}"
+    local hour="${timestamp:8:2}"
+    local minute="${timestamp:10:2}"
+
+    date -d "$year-$month-$day $hour:$minute:00" +%s 2>/dev/null || echo "0"
+}
+
+# Cleanup old backup files (local)
+cleanup_local_backups() {
+    log "INFO" "Cleanup started: local backups"
+
+    local current_time=$(date +%s)
+    local retention_seconds=$((BACKUP_RETENTION_DAYS * 86400))
+    local deleted_count=0
+
+    for file in "$BACKUP_DIR"/xafdocker*.bak; do
+        [ -f "$file" ] || continue
+
+        local filename=$(basename "$file")
+        local timestamp=$(parse_timestamp_from_filename "$filename")
+
+        if [ -z "$timestamp" ]; then
+            log "WARN" "Could not parse timestamp from: $filename"
+            continue
+        fi
+
+        local file_epoch=$(timestamp_to_epoch "$timestamp")
+        if [ "$file_epoch" = "0" ]; then
+            log "WARN" "Invalid timestamp in filename: $filename"
+            continue
+        fi
+
+        local age_seconds=$((current_time - file_epoch))
+        local age_days=$((age_seconds / 86400))
+
+        if [ $age_seconds -gt $retention_seconds ]; then
+            log "INFO" "Deleting local file (age: ${age_days} days): $filename"
+            rm -f "$file"
+            deleted_count=$((deleted_count + 1))
+        fi
+    done
+
+    log "INFO" "Cleanup completed: $deleted_count local file(s) deleted"
+}
+
+# Cleanup old backup files (FTP)
+cleanup_ftp_backups() {
+    log "INFO" "Cleanup started: FTP backups"
+
+    local ftp_protocol="ftp"
+    if [ "$FTP_USE_TLS" = "true" ]; then
+        ftp_protocol="ftps"
+    fi
+
+    local current_time=$(date +%s)
+    local retention_seconds=$((BACKUP_RETENTION_DAYS * 86400))
+    local deleted_count=0
+
+    # List FTP files
+    local ftp_files=$(lftp -c "
+        set ftp:ssl-allow $([ \"$FTP_USE_TLS\" = \"true\" ] && echo \"yes\" || echo \"no\");
+        set ssl:verify-certificate no;
+        open -u $FTP_USER,$FTP_PASSWORD -p $FTP_PORT $ftp_protocol://$FTP_HOST;
+        cls -1 $FTP_PATH/xafdocker*.bak;
+        bye
+    " 2>/dev/null || echo "")
+
+    if [ -z "$ftp_files" ]; then
+        log "INFO" "No FTP files found to cleanup"
+        return 0
+    fi
+
+    # Process each file
+    echo "$ftp_files" | while read filename; do
+        [ -z "$filename" ] && continue
+
+        local timestamp=$(parse_timestamp_from_filename "$(basename "$filename")")
+
+        if [ -z "$timestamp" ]; then
+            log "WARN" "Could not parse timestamp from FTP file: $filename"
+            continue
+        fi
+
+        local file_epoch=$(timestamp_to_epoch "$timestamp")
+        if [ "$file_epoch" = "0" ]; then
+            log "WARN" "Invalid timestamp in FTP filename: $filename"
+            continue
+        fi
+
+        local age_seconds=$((current_time - file_epoch))
+        local age_days=$((age_seconds / 86400))
+
+        if [ $age_seconds -gt $retention_seconds ]; then
+            log "INFO" "Deleting FTP file (age: ${age_days} days): $(basename "$filename")"
+
+            lftp -c "
+                set ftp:ssl-allow $([ \"$FTP_USE_TLS\" = \"true\" ] && echo \"yes\" || echo \"no\");
+                set ssl:verify-certificate no;
+                open -u $FTP_USER,$FTP_PASSWORD -p $FTP_PORT $ftp_protocol://$FTP_HOST;
+                rm -f $filename;
+                bye
+            " > /dev/null 2>&1
+
+            deleted_count=$((deleted_count + 1))
+        fi
+    done
+
+    log "INFO" "Cleanup completed: $deleted_count FTP file(s) deleted"
+}
+
 # Main execution
 main() {
     log "INFO" "Backup process started"
@@ -188,6 +310,10 @@ main() {
         send_webhook "failure" "ftp_upload" "FTP upload failed" "$backup_file"
         return 1
     fi
+
+    # Cleanup old backups
+    cleanup_local_backups || log "WARN" "Local cleanup had errors"
+    cleanup_ftp_backups || log "WARN" "FTP cleanup had errors"
 
     log "INFO" "Backup process completed"
 }
