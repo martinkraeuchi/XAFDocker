@@ -9,6 +9,7 @@ set -euo pipefail
 : "${FTP_HOST:?FTP_HOST is required}"
 : "${FTP_USER:?FTP_USER is required}"
 : "${FTP_PASSWORD:?FTP_PASSWORD is required}"
+: "${FTP_PATH:?FTP_PATH is required}"
 
 # Generate crontab from BACKUP_SCHEDULE
 BACKUP_SCHEDULE="${BACKUP_SCHEDULE:-30 23 * * *}"
@@ -20,7 +21,7 @@ echo "[$(date '+%Y-%m-%d %H:%M:%S')] [INFO] Database: ${BACKUP_DATABASE:-XAFDock
 
 # Test SQL Server connectivity
 echo "[$(date '+%Y-%m-%d %H:%M:%S')] [INFO] Testing SQL Server connectivity..."
-if /opt/mssql-tools18/bin/sqlcmd -S ${SQL_SERVER:-sqlserver},1433 -U sa -P "$SQL_SA_PASSWORD" -Q "SELECT 1" -C -b > /dev/null 2>&1; then
+if /opt/mssql-tools18/bin/sqlcmd -S "${SQL_SERVER:-sqlserver},${SQL_PORT:-1433}" -U "${SQL_USER:-sa}" -P "$SQL_SA_PASSWORD" -Q "SELECT 1" -C -b > /dev/null 2>&1; then
     echo "[$(date '+%Y-%m-%d %H:%M:%S')] [INFO] SQL Server connection successful"
 else
     echo "[$(date '+%Y-%m-%d %H:%M:%S')] [WARN] SQL Server connection failed, will retry on schedule"
