@@ -170,10 +170,12 @@ upload_to_ftp() {
             sleep 30
         fi
 
-        # Execute lftp upload
+        # Execute lftp upload with explicit FTPS support
         if lftp -c "
             set ftp:ssl-allow $([ \"$FTP_USE_TLS\" = \"true\" ] && echo \"yes\" || echo \"no\");
             set ftp:ssl-force $([ \"$FTP_USE_TLS\" = \"true\" ] && echo \"yes\" || echo \"no\");
+            set ftp:ssl-protect-data $([ \"$FTP_USE_TLS\" = \"true\" ] && echo \"yes\" || echo \"no\");
+            set ftp:ssl-protect-list $([ \"$FTP_USE_TLS\" = \"true\" ] && echo \"yes\" || echo \"no\");
             set ssl:verify-certificate no;
             open -u \"$FTP_USER\",\"$FTP_PASSWORD\" -p $FTP_PORT $ftp_protocol://$FTP_HOST;
             mkdir -p \"$FTP_PATH\" || echo \"Directory exists\";
