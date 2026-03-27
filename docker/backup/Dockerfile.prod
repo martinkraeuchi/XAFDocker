@@ -22,7 +22,7 @@ ENV PATH="${PATH}:/opt/mssql-tools18/bin"
 # Create app directory
 WORKDIR /app
 
-# Copy backup script only (no entrypoint needed for scheduled execution)
+# Copy backup script and production entrypoint
 COPY backup.sh /app/backup.sh
 COPY entrypoint-prod.sh /app/entrypoint.sh
 

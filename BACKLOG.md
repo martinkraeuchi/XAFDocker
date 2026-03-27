@@ -145,3 +145,30 @@ Scheduled Task:
 - Automatically manages disk space by removing old backups
 - Uses actual backup size rather than arbitrary minimum
 - Maintains at least 3 backups before cleanup (if 3+ exist)
+
+## Story 5 - Entrypoint unknown ✅ COMPLETED
+
+**Completed:** 2026-03-27
+
+**Issue:**
+Dokploy cannot start container because entrypoint.sh is named entrypoint-prod.sh
+
+**Resolution:**
+The Dockerfile.prod was already correctly configured:
+- Line 27: `COPY entrypoint-prod.sh /app/entrypoint.sh` - Copies the production entrypoint file to the expected location
+- Line 40: `CMD ["/app/entrypoint.sh"]` - Runs the entrypoint script
+
+**Clarification:**
+- The source file in the repository is `docker/backup/entrypoint-prod.sh` (production-specific)
+- During Docker build, it's copied to `/app/entrypoint.sh` inside the container
+- The container CMD runs `/app/entrypoint.sh`, which exists in the container
+- Updated comment to clarify this is the production entrypoint (not "no entrypoint needed")
+
+**Verification:**
+The Dockerfile.prod build process:
+1. Finds `entrypoint-prod.sh` in `docker/backup/` directory
+2. Copies it to `/app/entrypoint.sh` inside the container
+3. Makes it executable with `chmod +x /app/entrypoint.sh`
+4. Runs it via `CMD ["/app/entrypoint.sh"]`
+
+No code changes were needed - the configuration was already correct.
