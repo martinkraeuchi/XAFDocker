@@ -3,24 +3,30 @@ FROM ubuntu:22.04
 # Disable GPG signature checking for initial package installation
 # This is a workaround for GPG key issues in Docker builds
 ENV APT_KEY_DONT_WARN_ON_DANGEROUS_USAGE=1
+ENV DEBIAN_FRONTEND=noninteractive
 
-# Install SQL Server command-line tools and required packages
-# Note: No cron - scheduling handled by Dokploy
-RUN apt-get update --allow-insecure-repositories || apt-get update \
-    && DEBIAN_FRONTEND=noninteractive apt-get install -y --allow-unauthenticated \
-    bash \
-    curl \
-    ca-certificates \
-    apt-transport-https \
-    gnupg \
-    && curl -fsSL https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor -o /usr/share/keyrings/microsoft-archive-keyring.gpg \
-    && echo "deb [arch=amd64 signed-by=/usr/share/keyrings/microsoft-archive-keyring.gpg] https://packages.microsoft.com/ubuntu/22.04/prod jammy main" > /etc/apt/sources.list.d/mssql-release.list \
-    && apt-get update \
+# First: Install basic tools with GPG checks disabled
+RUN echo 'APT::Get::AllowUnauthenticated "true";' > /etc/apt/apt.conf.d/99-allow-unauth \
+    && apt-get update || true \
+    && apt-get install -y --allow-unauthenticated \
+        bash \
+        curl \
+        ca-certificates \
+        gnupg \
+        apt-transport-https \
+    && rm /etc/apt/apt.conf.d/99-allow-unauth
+
+# Second: Add Microsoft repository with proper GPG key
+RUN curl -fsSL https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor -o /usr/share/keyrings/microsoft-archive-keyring.gpg \
+    && echo "deb [arch=amd64 signed-by=/usr/share/keyrings/microsoft-archive-keyring.gpg] https://packages.microsoft.com/ubuntu/22.04/prod jammy main" > /etc/apt/sources.list.d/mssql-release.list
+
+# Third: Install SQL Server tools and other packages
+RUN apt-get update \
     && ACCEPT_EULA=Y apt-get install -y \
-    mssql-tools18 \
-    unixodbc-dev \
-    lftp \
-    findutils \
+        mssql-tools18 \
+        unixodbc-dev \
+        lftp \
+        findutils \
     && rm -rf /var/lib/apt/lists/*
 
 # Add mssql-tools to PATH
