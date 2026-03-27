@@ -108,10 +108,12 @@ services:
         compress: "true"
 
   # Backup service for SQL Server
+  # Note: Cron removed - scheduling handled by Dokploy Scheduled Tasks
+  # Dokploy Command: docker exec xafdocker-backup /app/backup.sh
   backup:
     build:
       context: ./docker/backup
-      dockerfile: Dockerfile
+      dockerfile: Dockerfile.prod
     container_name: xafdocker-backup
     depends_on:
       sqlserver:
@@ -121,7 +123,6 @@ services:
       - SQL_SERVER=sqlserver
       - SQL_PORT=1433
       - SQL_USER=sa
-      - BACKUP_SCHEDULE=${BACKUP_SCHEDULE}
       - BACKUP_RETENTION_DAYS=${BACKUP_RETENTION_DAYS:-7}
       - BACKUP_DATABASE=${BACKUP_DATABASE:-XAFDocker}
       - TZ=${TZ:-UTC}
@@ -139,7 +140,7 @@ services:
       - xafdocker-network
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "pgrep", "crond"]
+      test: ["CMD", "test", "-x", "/app/backup.sh"]
       interval: 60s
       timeout: 3s
       retries: 3

@@ -1,0 +1,40 @@
+FROM ubuntu:22.04
+
+# Install SQL Server command-line tools and required packages
+# Note: No cron - scheduling handled by Dokploy
+RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y \
+    curl \
+    apt-transport-https \
+    gnupg \
+    && curl https://packages.microsoft.com/keys/microsoft.asc | apt-key add - \
+    && curl https://packages.microsoft.com/config/ubuntu/22.04/prod.list > /etc/apt/sources.list.d/mssql-release.list \
+    && apt-get update \
+    && ACCEPT_EULA=Y apt-get install -y \
+    mssql-tools18 \
+    unixodbc-dev \
+    lftp \
+    findutils \
+    && rm -rf /var/lib/apt/lists/*
+
+# Add mssql-tools to PATH
+ENV PATH="${PATH}:/opt/mssql-tools18/bin"
+
+# Create app directory
+WORKDIR /app
+
+# Copy backup script only (no entrypoint needed for scheduled execution)
+COPY backup.sh /app/backup.sh
+COPY entrypoint-prod.sh /app/entrypoint.sh
+
+# Make scripts executable
+RUN chmod +x /app/backup.sh /app/entrypoint.sh
+
+# Create backup directory with full permissions
+RUN mkdir -p /backups && chmod 777 /backups
+
+# Health check: verify container is running and backup script is accessible
+HEALTHCHECK --interval=60s --timeout=3s --retries=3 \
+    CMD test -x /app/backup.sh || exit 1
+
+# Keep container running for Dokploy scheduled task execution
+CMD ["/app/entrypoint.sh"]

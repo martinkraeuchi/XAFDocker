@@ -81,3 +81,34 @@ Examples:
 
 Trigger Backup in Docker:
 docker exec xafdocker-backup /app/backup.sh
+
+
+## Story 3 - Modify docker.compose.prod.yml ✅ COMPLETED
+
+**Completed:** 2026-03-27
+
+**Requirements:**
+- ✅ Remove cron job from production backup container
+- ✅ Keep backup.sh script unchanged for Dokploy scheduled execution
+- ✅ Set /backups folder permissions to 777 for SQL Server access
+
+**Implementation:**
+- Created [Dockerfile.prod](docker/backup/Dockerfile.prod) - Production Dockerfile without cron
+- Created [entrypoint-prod.sh](docker/backup/entrypoint-prod.sh) - Sets permissions and keeps container running
+- Updated [docker-compose.prod.yml](docker-compose.prod.yml) - Uses Dockerfile.prod and updated healthcheck
+- Removed `BACKUP_SCHEDULE` environment variable (not needed in production)
+- Changed healthcheck from `pgrep crond` to `test -x /app/backup.sh`
+
+**Dokploy Configuration:**
+```
+Scheduled Task:
+- Name: SQL Server Backup
+- Schedule: 0 * * * * (every hour)
+- Command: docker exec xafdocker-backup /app/backup.sh
+```
+
+**Key Changes:**
+- Production container runs indefinitely with `tail -f /dev/null`
+- Permissions set automatically on container startup
+- Scheduling handled externally by Dokploy
+- Development environment still uses cron (docker-compose.yml unchanged)
