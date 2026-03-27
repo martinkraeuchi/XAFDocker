@@ -112,3 +112,36 @@ Scheduled Task:
 - Permissions set automatically on container startup
 - Scheduling handled externally by Dokploy
 - Development environment still uses cron (docker-compose.yml unchanged)
+
+
+## Story 4 - Free up space before backup ✅ COMPLETED
+
+**Completed:** 2026-03-27
+
+**Requirements:**
+- ✅ Check if available space is less than the size of the last backup file
+- ✅ Delete the 3 oldest backup files if space is insufficient
+- ✅ Perform space check before invoking backup operation
+
+**Implementation:**
+- Added `get_last_backup_size()` - Gets size of most recent backup (defaults to 100MB if no previous backup)
+- Added `delete_oldest_backups(count)` - Deletes specified number of oldest backup files
+- Added `ensure_sufficient_space(dir)` - Main logic that checks space and triggers cleanup if needed
+- Integrated space check into `backup_database()` function before backup creation
+- Removed old hardcoded 1GB minimum check, now uses actual last backup size
+
+**Logic Flow:**
+1. Before backup, get available space and last backup file size
+2. If available space < last backup size:
+   - Log warning about insufficient space
+   - Delete 3 oldest backup files
+   - Re-check available space
+   - Ensure at least 100MB still available
+3. If still insufficient after cleanup, fail with error
+4. Otherwise, proceed with backup
+
+**Benefits:**
+- Prevents backup failures due to insufficient space
+- Automatically manages disk space by removing old backups
+- Uses actual backup size rather than arbitrary minimum
+- Maintains at least 3 backups before cleanup (if 3+ exist)

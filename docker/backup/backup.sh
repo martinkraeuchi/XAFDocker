@@ -89,6 +89,84 @@ generate_backup_filename() {
     echo "xafdocker${timestamp}.bak"
 }
 
+# Get size of most recent backup file in bytes
+get_last_backup_size() {
+    # Find most recent backup file by modification time
+    local last_backup=$(find "$BACKUP_DIR" -name "*.bak" -type f -printf '%T@ %p\n' 2>/dev/null | sort -rn | head -1 | cut -d' ' -f2-)
+
+    if [ -z "$last_backup" ] || [ ! -f "$last_backup" ]; then
+        # No previous backup found, return default 100MB estimate
+        echo $((100 * 1024 * 1024))
+        return 0
+    fi
+
+    # Get file size in bytes
+    stat -c%s "$last_backup" 2>/dev/null || echo $((100 * 1024 * 1024))
+}
+
+# Delete oldest backup files
+delete_oldest_backups() {
+    local count="$1"
+
+    log "INFO" "Deleting $count oldest backup file(s) to free up space"
+
+    # Find oldest backup files and delete them
+    local deleted=0
+    find "$BACKUP_DIR" -name "*.bak" -type f -printf '%T@ %p\n' 2>/dev/null | \
+        sort -n | \
+        head -n "$count" | \
+        cut -d' ' -f2- | \
+        while read file; do
+            if [ -f "$file" ]; then
+                local size=$(du -h "$file" | cut -f1)
+                log "INFO" "Deleting old backup: $(basename "$file") ($size)"
+                rm -f "$file"
+                deleted=$((deleted + 1))
+            fi
+        done
+
+    log "INFO" "Deleted $deleted backup file(s)"
+    return 0
+}
+
+# Check and ensure sufficient disk space before backup
+ensure_sufficient_space() {
+    local backup_dir="$1"
+
+    # Get available space in bytes
+    local available_bytes=$(df -B1 "$backup_dir" | tail -1 | awk '{print $4}')
+    local available_mb=$((available_bytes / 1024 / 1024))
+
+    # Get last backup size in bytes
+    local last_backup_size=$(get_last_backup_size)
+    local last_backup_mb=$((last_backup_size / 1024 / 1024))
+
+    log "INFO" "Space check: ${available_mb}MB available, last backup was ${last_backup_mb}MB"
+
+    # Check if available space is less than last backup size
+    if [ "$available_bytes" -lt "$last_backup_size" ]; then
+        log "WARN" "Insufficient space: ${available_mb}MB available < ${last_backup_mb}MB required"
+        log "INFO" "Attempting to free up space by deleting 3 oldest backups"
+
+        # Delete 3 oldest backup files
+        delete_oldest_backups 3
+
+        # Re-check available space
+        available_bytes=$(df -B1 "$backup_dir" | tail -1 | awk '{print $4}')
+        available_mb=$((available_bytes / 1024 / 1024))
+
+        log "INFO" "After cleanup: ${available_mb}MB available"
+
+        # Still check minimum 100MB requirement
+        if [ "$available_mb" -lt 100 ]; then
+            log "ERROR" "Still insufficient space after cleanup: ${available_mb}MB available"
+            return 1
+        fi
+    fi
+
+    return 0
+}
+
 # Perform SQL Server database backup
 backup_database() {
     local backup_file="$BACKUP_DIR/$(generate_backup_filename)"
@@ -96,18 +174,14 @@ backup_database() {
     log "INFO" "Backup started: $BACKUP_DATABASE"
     log "INFO" "Backup file: $backup_file"
 
-    # Check disk space
-    local available_kb=$(df -k "$BACKUP_DIR" | tail -1 | awk '{print $4}')
-    local available_mb=$((available_kb / 1024))
-    log "INFO" "Available disk space: ${available_mb}MB"
-
-    if [ "$available_mb" -lt 1024 ]; then
-        log "ERROR" "Insufficient disk space: ${available_mb}MB available, 1GB minimum required"
-        return 1
-    fi
-
     # Create backup directory if it doesn't exist
     mkdir -p "$BACKUP_DIR"
+
+    # Ensure sufficient space (delete old backups if needed)
+    if ! ensure_sufficient_space "$BACKUP_DIR"; then
+        log "ERROR" "Cannot proceed with backup: insufficient disk space"
+        return 1
+    fi
 
     # Execute backup with retry logic
     local retry=0
