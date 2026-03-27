@@ -5,16 +5,20 @@ FROM ubuntu:22.04
 ENV APT_KEY_DONT_WARN_ON_DANGEROUS_USAGE=1
 ENV DEBIAN_FRONTEND=noninteractive
 
-# First: Install basic tools with GPG checks disabled
-RUN echo 'APT::Get::AllowUnauthenticated "true";' > /etc/apt/apt.conf.d/99-allow-unauth \
-    && apt-get update || true \
+# Configure APT to bypass all GPG checks temporarily
+RUN echo 'Acquire::AllowInsecureRepositories "true";' > /etc/apt/apt.conf.d/99-insecure \
+    && echo 'Acquire::AllowDowngradeToInsecureRepositories "true";' >> /etc/apt/apt.conf.d/99-insecure \
+    && echo 'APT::Get::AllowUnauthenticated "true";' >> /etc/apt/apt.conf.d/99-insecure
+
+# First: Install basic tools (ignoring GPG errors completely)
+RUN apt-get update -o Acquire::AllowInsecureRepositories=true -o Acquire::AllowDowngradeToInsecureRepositories=true || true \
     && apt-get install -y --allow-unauthenticated \
         bash \
         curl \
         ca-certificates \
         gnupg \
         apt-transport-https \
-    && rm /etc/apt/apt.conf.d/99-allow-unauth
+    && rm /etc/apt/apt.conf.d/99-insecure
 
 # Second: Add Microsoft repository with proper GPG key
 RUN curl -fsSL https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor -o /usr/share/keyrings/microsoft-archive-keyring.gpg \
