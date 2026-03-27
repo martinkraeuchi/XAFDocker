@@ -3,6 +3,7 @@ FROM ubuntu:22.04
 # Install SQL Server command-line tools and required packages
 # Note: No cron - scheduling handled by Dokploy
 RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y \
+    bash \
     curl \
     apt-transport-https \
     gnupg \

@@ -151,24 +151,29 @@ Scheduled Task:
 **Completed:** 2026-03-27
 
 **Issue:**
-Dokploy cannot start container because entrypoint.sh is named entrypoint-prod.sh
+Dokploy cannot start container with error: `exec /app/entrypoint.sh: no such file or directory`
+
+**Root Cause:**
+The error "no such file or directory" for a script typically means the **shebang interpreter** is missing, not the script itself. The entrypoint script uses `#!/bin/bash`, but bash was not explicitly installed in Dockerfile.prod.
 
 **Resolution:**
-The Dockerfile.prod was already correctly configured:
-- Line 27: `COPY entrypoint-prod.sh /app/entrypoint.sh` - Copies the production entrypoint file to the expected location
-- Line 40: `CMD ["/app/entrypoint.sh"]` - Runs the entrypoint script
+Added `bash` to the package installation list in Dockerfile.prod line 6:
+```dockerfile
+RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y \
+    bash \
+    curl \
+    ...
+```
 
-**Clarification:**
-- The source file in the repository is `docker/backup/entrypoint-prod.sh` (production-specific)
-- During Docker build, it's copied to `/app/entrypoint.sh` inside the container
-- The container CMD runs `/app/entrypoint.sh`, which exists in the container
-- Updated comment to clarify this is the production entrypoint (not "no entrypoint needed")
+**Why this happened:**
+- Ubuntu 22.04 base image may not include bash by default in minimal installations
+- The entrypoint-prod.sh script requires bash (`#!/bin/bash` shebang)
+- Without bash installed, the exec fails with "no such file or directory"
 
-**Verification:**
-The Dockerfile.prod build process:
-1. Finds `entrypoint-prod.sh` in `docker/backup/` directory
-2. Copies it to `/app/entrypoint.sh` inside the container
-3. Makes it executable with `chmod +x /app/entrypoint.sh`
-4. Runs it via `CMD ["/app/entrypoint.sh"]`
+**Files involved:**
+- `docker/backup/entrypoint-prod.sh` - Source file (production entrypoint)
+- Copied to `/app/entrypoint.sh` in container during build
+- Requires `/bin/bash` interpreter to execute
 
-No code changes were needed - the configuration was already correct.
+**Fix verified:**
+After adding bash to package list, the container should start successfully.
