@@ -1,36 +1,19 @@
 FROM ubuntu:22.04
 
-# Disable GPG signature checking for initial package installation
-# This is a workaround for GPG key issues in Docker builds
-ENV APT_KEY_DONT_WARN_ON_DANGEROUS_USAGE=1
-ENV DEBIAN_FRONTEND=noninteractive
-
-# Configure APT to bypass all GPG checks temporarily
-RUN echo 'Acquire::AllowInsecureRepositories "true";' > /etc/apt/apt.conf.d/99-insecure \
-    && echo 'Acquire::AllowDowngradeToInsecureRepositories "true";' >> /etc/apt/apt.conf.d/99-insecure \
-    && echo 'APT::Get::AllowUnauthenticated "true";' >> /etc/apt/apt.conf.d/99-insecure
-
-# First: Install basic tools (ignoring GPG errors completely)
-RUN apt-get update -o Acquire::AllowInsecureRepositories=true -o Acquire::AllowDowngradeToInsecureRepositories=true || true \
-    && apt-get install -y --allow-unauthenticated \
-        bash \
-        curl \
-        ca-certificates \
-        gnupg \
-        apt-transport-https \
-    && rm /etc/apt/apt.conf.d/99-insecure
-
-# Second: Add Microsoft repository with proper GPG key
-RUN curl -fsSL https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor -o /usr/share/keyrings/microsoft-archive-keyring.gpg \
-    && echo "deb [arch=amd64 signed-by=/usr/share/keyrings/microsoft-archive-keyring.gpg] https://packages.microsoft.com/ubuntu/22.04/prod jammy main" > /etc/apt/sources.list.d/mssql-release.list
-
-# Third: Install SQL Server tools and other packages
-RUN apt-get update \
+# Install SQL Server command-line tools and required packages
+RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y \
+    curl \
+    apt-transport-https \
+    gnupg \
+    && curl https://packages.microsoft.com/keys/microsoft.asc | apt-key add - \
+    && curl https://packages.microsoft.com/config/ubuntu/22.04/prod.list > /etc/apt/sources.list.d/mssql-release.list \
+    && apt-get update \
     && ACCEPT_EULA=Y apt-get install -y \
-        mssql-tools18 \
-        unixodbc-dev \
-        lftp \
-        findutils \
+    mssql-tools18 \
+    unixodbc-dev \
+    lftp \
+    findutils \
+    procps \
     && rm -rf /var/lib/apt/lists/*
 
 # Add mssql-tools to PATH
@@ -39,19 +22,18 @@ ENV PATH="${PATH}:/opt/mssql-tools18/bin"
 # Create app directory
 WORKDIR /app
 
+# Create backup directory
+RUN mkdir -p /backups
+
+# Create backup directory with full permissions
+RUN mkdir -p /backups && chmod 777 /backups
+
 # Copy backup script and production entrypoint
 COPY backup.sh /app/backup.sh
 COPY entrypoint-prod.sh /app/entrypoint.sh
 
 # Make scripts executable
 RUN chmod +x /app/backup.sh /app/entrypoint.sh
-
-# Create backup directory with full permissions
-RUN mkdir -p /backups && chmod 777 /backups
-
-# Health check: verify container is running and backup script is accessible
-HEALTHCHECK --interval=60s --timeout=3s --retries=3 \
-    CMD test -x /app/backup.sh || exit 1
 
 # Keep container running for Dokploy scheduled task execution
 CMD ["/app/entrypoint.sh"]
