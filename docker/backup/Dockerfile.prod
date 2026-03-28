@@ -13,7 +13,6 @@ RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y \
     unixodbc-dev \
     lftp \
     findutils \
-    procps \
     && rm -rf /var/lib/apt/lists/*
 
 # Add mssql-tools to PATH
@@ -21,9 +20,6 @@ ENV PATH="${PATH}:/opt/mssql-tools18/bin"
 
 # Create app directory
 WORKDIR /app
-
-# Create backup directory
-RUN mkdir -p /backups
 
 # Create backup directory with full permissions
 RUN mkdir -p /backups && chmod 777 /backups
@@ -34,6 +30,10 @@ COPY entrypoint-prod.sh /app/entrypoint.sh
 
 # Make scripts executable
 RUN chmod +x /app/backup.sh /app/entrypoint.sh
+
+# Health check: verify container is running and backup script is accessible
+HEALTHCHECK --interval=60s --timeout=3s --retries=3 \
+    CMD test -x /app/backup.sh || exit 1
 
 # Keep container running for Dokploy scheduled task execution
 CMD ["/app/entrypoint.sh"]
